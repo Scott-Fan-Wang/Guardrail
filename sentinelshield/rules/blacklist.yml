@@ -1,0 +1,3 @@
+- id: hate_speech_en
+  when: content.match(r"\bnazi\b|\bhate\b")
+  then: BLOCK
