@@ -22,9 +22,10 @@ class Rule:
 
 
 class RuleEngine:
-    def __init__(self, rules_path: Path):
+    def __init__(self, rules_paths: List[Path]):
         self.rules: List[Rule] = []
-        self.load_rules(rules_path)
+        for p in rules_paths:
+            self.load_rules(p)
 
     def load_rules(self, path: Path) -> None:
         if not path.exists():
@@ -83,6 +84,13 @@ class Orchestrator:
         )
 
 
-def build_orchestrator() -> Orchestrator:
-    rule_engine = RuleEngine(Path(__file__).resolve().parent.parent / "rules" / "blacklist.yml")
+def build_orchestrator(
+    model_name: str | None = None, rules_files: List[Path] | None = None
+) -> Orchestrator:
+    base = Path(__file__).resolve().parent.parent
+    if rules_files is None:
+        rules_files = [base / "rules" / "blacklist.yml"]
+    rule_engine = RuleEngine(rules_files)
+    if model_name:
+        settings.model.active = model_name
     return Orchestrator(rule_engine)
