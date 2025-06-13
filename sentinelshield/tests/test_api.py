@@ -45,3 +45,10 @@ def test_moderate_provider_block():
     data = resp.json()
     assert data["decision"] == "BLOCK"
 
+
+def test_prompt_guard_22m():
+    resp = client.post("/v1/prompt-guard-22m", json={"prompt": "hello"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["safe"] is True
+

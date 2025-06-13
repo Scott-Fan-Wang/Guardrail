@@ -26,3 +26,12 @@ def test_orchestrator_multiple_rules():
     assert resp.decision == "ALLOW"
     resp2 = asyncio.run(orc.moderate("nazi"))
     assert resp2.decision == "BLOCK"
+
+
+def test_orchestrator_small_model():
+    orc = build_orchestrator(
+        model_name="llama_prompt_guard_2_22m",
+        rules_files=[Path("sentinelshield/rules/blacklist.yml")],
+    )
+    result = asyncio.run(orc.moderate("hello"))
+    assert result.safe is True

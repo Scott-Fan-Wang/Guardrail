@@ -21,3 +21,7 @@ curl -XPOST http://localhost:8000/v1/moderate -d '{"text": "hello"}' -H 'Content
 ```bash
 curl -XPOST http://localhost:8000/v1/prompt-guard -d '{"prompt": "hello"}' -H 'Content-Type: application/json'
 ```
+
+```bash
+curl -XPOST http://localhost:8000/v1/prompt-guard-22m -d '{"prompt": "hello"}' -H 'Content-Type: application/json'
+```
