@@ -7,7 +7,8 @@ provider.
 ## Quick start
 
 ```bash
-pip install fastapi uvicorn pydantic httpx pyyaml pytest
+pip install fastapi uvicorn pydantic httpx pyyaml pytest transformers modelscope
+pip install 'httpx<0.28' -U
 uvicorn sentinelshield.api.main:app --reload
 ```
 
@@ -15,4 +16,12 @@ Then call the API:
 
 ```bash
 curl -XPOST http://localhost:8000/v1/moderate -d '{"text": "hello"}' -H 'Content-Type: application/json'
+```
+
+```bash
+curl -XPOST http://localhost:8000/v1/prompt-guard -d '{"prompt": "hello"}' -H 'Content-Type: application/json'
+```
+
+```bash
+curl -XPOST http://localhost:8000/v1/prompt-guard-22m -d '{"prompt": "hello"}' -H 'Content-Type: application/json'
 ```
