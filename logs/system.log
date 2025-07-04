@@ -1,0 +1,28 @@
+[2025-07-04 11:34:17,618] INFO sentinelshield.system: Moderation timings: {'rule_engine': 7.62939453125e-06, 'total': 1.7881393432617188e-05}
+[2025-07-04 11:34:19,123] INFO sentinelshield.system: Moderation timings: {'rule_engine': 7.867813110351562e-06, 'llama_prompt_guard_2': 1.496741533279419, 'total': 1.496762990951538}
+[2025-07-04 11:34:19,131] INFO sentinelshield.system: Moderation timings: {'rule_engine': 7.152557373046875e-06, 'total': 1.5497207641601562e-05}
+[2025-07-04 11:34:19,140] INFO sentinelshield.system: Moderation timings: {'rule_engine': 3.0994415283203125e-06, 'total': 8.106231689453125e-06}
+[2025-07-04 11:35:19,201] INFO sentinelshield.system: Moderation timings: {'rule_engine': 9.5367431640625e-06, 'dummy': 4.4345855712890625e-05, 'total': 6.747245788574219e-05}
+[2025-07-04 11:35:19,212] INFO sentinelshield.system: Moderation timings: {'rule_engine': 1.0013580322265625e-05, 'total': 2.6464462280273438e-05}
+[2025-07-04 11:35:20,284] INFO sentinelshield.system: Moderation timings: {'rule_engine': 5.4836273193359375e-06, 'llama_prompt_guard_2': 1.0598137378692627, 'total': 1.0598304271697998}
+[2025-07-04 11:35:20,294] INFO sentinelshield.system: Moderation timings: {'rule_engine': 6.4373016357421875e-06, 'total': 2.193450927734375e-05}
+[2025-07-04 11:35:20,304] INFO sentinelshield.system: Moderation timings: {'rule_engine': 3.5762786865234375e-06, 'total': 9.298324584960938e-06}
+[2025-07-04 11:35:20,310] INFO sentinelshield.system: Moderation timings: {'rule_engine': 4.5299530029296875e-06, 'dummy': 1.3828277587890625e-05, 'total': 2.5033950805664062e-05}
+[2025-07-04 11:35:42,166] INFO sentinelshield.system: Moderation timings: {'rule_engine': 8.106231689453125e-06, 'dummy': 2.0265579223632812e-05, 'total': 3.9577484130859375e-05}
+[2025-07-04 11:35:42,184] INFO sentinelshield.system: Moderation timings: {'rule_engine': 4.76837158203125e-06, 'total': 1.33514404296875e-05}
+[2025-07-04 11:35:42,186] INFO sentinelshield.system: Moderation timings: {'rule_engine': 8.106231689453125e-06, 'total': 1.621246337890625e-05}
+[2025-07-04 11:36:45,964] INFO sentinelshield.system: Moderation timings: {'rule_engine': 5.245208740234375e-06, 'dummy': 3.8623809814453125e-05, 'total': 5.3882598876953125e-05}
+[2025-07-04 11:36:47,009] INFO sentinelshield.system: Moderation timings: {'rule_engine': 6.4373016357421875e-06, 'llama_prompt_guard_2': 1.0383975505828857, 'total': 1.0384232997894287}
+[2025-07-04 11:37:06,332] INFO sentinelshield.system: Moderation timings: {'rule_engine': 7.62939453125e-06, 'dummy': 1.7642974853515625e-05, 'total': 3.504753112792969e-05}
+[2025-07-04 11:37:06,339] INFO sentinelshield.system: Moderation timings: {'rule_engine': 4.76837158203125e-06, 'total': 1.1682510375976562e-05}
+[2025-07-04 11:37:07,216] INFO sentinelshield.system: Moderation timings: {'rule_engine': 5.9604644775390625e-06, 'llama_prompt_guard_2': 0.8697245121002197, 'total': 0.8697834014892578}
+[2025-07-04 11:37:07,229] INFO sentinelshield.system: Moderation timings: {'rule_engine': 7.152557373046875e-06, 'total': 1.7404556274414062e-05}
+[2025-07-04 11:37:07,235] INFO sentinelshield.system: Moderation timings: {'rule_engine': 4.76837158203125e-06, 'total': 1.2159347534179688e-05}
+[2025-07-04 11:37:07,246] INFO sentinelshield.system: Moderation timings: {'rule_engine': 4.76837158203125e-06, 'dummy': 1.3589859008789062e-05, 'total': 2.8133392333984375e-05}
+[2025-07-04 11:37:07,254] INFO sentinelshield.system: Moderation timings: {'rule_engine': 5.4836273193359375e-06, 'dummy': 6.556510925292969e-05, 'total': 8.058547973632812e-05}
+[2025-07-04 11:37:07,545] INFO sentinelshield.system: Moderation timings: {'rule_engine': 5.9604644775390625e-06, 'llama_prompt_guard_2': 0.2861785888671875, 'total': 0.2861952781677246}
+[2025-07-04 11:37:07,568] INFO sentinelshield.system: Moderation timings: {'rule_engine': 4.76837158203125e-06, 'dummy': 1.049041748046875e-05, 'total': 2.3365020751953125e-05}
+[2025-07-04 11:37:07,586] INFO sentinelshield.system: Moderation timings: {'rule_engine': 7.3909759521484375e-06, 'total': 1.71661376953125e-05}
+[2025-07-04 11:37:07,589] INFO sentinelshield.system: Moderation timings: {'rule_engine': 2.5987625122070312e-05, 'total': 4.9114227294921875e-05}
+[2025-07-04 11:40:01,871] INFO sentinelshield.system: Moderation timings: {'rule_engine': 7.867813110351562e-06, 'llama_prompt_guard_2': 0.7567355632781982, 'total': 0.7567901611328125}
+[2025-07-04 11:40:31,676] INFO sentinelshield.system: Moderation timings: {'rule_engine': 5.9604644775390625e-06, 'llama_prompt_guard_2': 0.13741183280944824, 'total': 0.13742899894714355}

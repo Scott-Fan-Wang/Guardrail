@@ -3,52 +3,51 @@ from __future__ import annotations
 import asyncio
 from ...core.logger import logger
 
-try:  # optional dependency
+try:
     from modelscope.hub.snapshot_download import snapshot_download
-except Exception as e:  # pragma: no cover - optional dependency
+except Exception as e:
     logger.warning("modelscope not available: %s", e)
     snapshot_download = None
 
 try:
-    from transformers import pipeline
-except Exception as e:  # pragma: no cover - optional dependency
+    from transformers.pipelines import pipeline
+except Exception as e:
     logger.warning("transformers not available: %s", e)
     pipeline = None
 
 
-class LlamaPromptGuard2Provider:
-    name = "llama_prompt_guard_2"
+class LlamaGuard4_12BProvider:
+    name = "llama_guard_4_12b"
 
     def __init__(self) -> None:
         self.pipe = None
         if pipeline is None:
             return
-        model_id = "LLM-Research/Llama-Prompt-Guard-2-22M"
+        model_id = "LLM-Research/Llama-Guard-4-12B"
         model_path = None
         if snapshot_download:
-            try:  # pragma: no cover - network required
+            try:
                 model_path = snapshot_download(model_id)
-            except Exception as e:  # pragma: no cover - optional dependency
+            except Exception as e:
                 logger.warning("Failed to download model from ModelScope: %s", e)
         if model_path is None:
             model_path = model_id
-        try:  # pragma: no cover - optional dependency
+        try:
             self.pipe = pipeline(
                 "text-classification",
                 model=model_path,
                 tokenizer=model_path,
             )
-        except Exception as e:  # pragma: no cover - optional dependency
-            logger.warning("Failed to load Llama Prompt Guard 2 model: %s", e)
+        except Exception as e:
+            logger.warning("Failed to load Llama-Guard-4-12B model: %s", e)
 
     async def moderate(self, text: str) -> tuple[float, str | None]:
         score = 0.0
         label = None
         if self.pipe is None:
             await asyncio.sleep(0)
-            return score
+            return score, label
         res = self.pipe(text, truncation=True)
-        # print(f"Received list response: {res}")
         if isinstance(res, list):
             res = res[0]
         if isinstance(res, dict):
@@ -58,5 +57,4 @@ class LlamaPromptGuard2Provider:
             score = 1 - score
         return score, label
 
-
-provider = LlamaPromptGuard2Provider()
+provider = LlamaGuard4_12BProvider() 
