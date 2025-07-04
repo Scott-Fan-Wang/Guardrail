@@ -13,6 +13,7 @@ orc = build_orchestrator(
         Path(__file__).resolve().parent.parent.parent / "rules" / "whitelist.yml",
         Path(__file__).resolve().parent.parent.parent / "rules" / "blacklist.yml",
     ],
+    api_path="/v1/prompt-guard",
 )
 
 
