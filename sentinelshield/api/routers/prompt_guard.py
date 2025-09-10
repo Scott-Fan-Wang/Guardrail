@@ -24,4 +24,11 @@ class PromptGuardRequest(BaseModel):
 @router.post("/v1/prompt-guard")
 async def prompt_guard(req: PromptGuardRequest):
     resp = await orc.moderate(req.prompt)
+    # If prompt is very long, double-check the last 10,000 characters
+    if len(req.prompt) > 20000:
+        tail = req.prompt[-10000:]
+        tail_resp = await orc.moderate(tail)
+        # Return the conservative result: block if either check blocks
+        if not tail_resp.safe:
+            return tail_resp
     return resp

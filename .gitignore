@@ -3,3 +3,8 @@ __pycache__/
 models/
 logs/**
 kernel_meta/
+
+.python-version
+pyproject.toml
+uv.lock
+.gitignore
