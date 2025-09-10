@@ -5,6 +5,38 @@ It exposes a simple FastAPI service with a rule engine and a dummy model
 provider.
 
 ## Quick start
+```bash
+docker build -t guard-img .
+
+docker run -it -d --name guard-app \
+  --shm-size=1g --privileged \
+  --device /dev/davinci0 \
+  --device /dev/davinci_manager \
+  --device /dev/hisi_hdc \
+  --device /dev/devmm_svm \
+  -v /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro \
+  -v /usr/local/sbin:/usr/local/sbin:ro \
+  -v /data/models:/workspace/models \
+  -p 8001:8001 \
+  guard-img \
+  uvicorn sentinelshield.api.main:app --reload --host 0.0.0.0 --port 8001
+```
+
+```bash
+docker run -it -d --name mindie-g \
+--net=host --shm-size=1g --privileged \
+--device /dev/davinci0 \
+--device=/dev/davinci_manager \
+--device=/dev/hisi_hdc \
+--device=/dev/devmm_svm \
+-v /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro \
+-v /usr/local/sbin:/usr/local/sbin:ro \
+-v /data/root:/data/root:ro \
+-v /data/scott/Guardrail:/data/scott/Guardrail \
+swr.cn-south-1.myhuaweicloud.com/ascendhub/mindie:2.0.T3.1-800I-A2-py311-openeuler24.03-lts bash
+
+export MODELSCOPE_CACHE=/data/scott/Guardrail/models
+```
 
 ```bash
 pip install fastapi uvicorn pydantic httpx pyyaml pytest transformers modelscope
@@ -25,7 +57,7 @@ curl -XPOST http://localhost:8000/v1/moderate -d '{"text": "hello"}' -H 'Content
 ```
 
 ```bash
-curl -XPOST http://localhost:8000/v1/prompt-guard -d '{"prompt": "hello"}' -H 'Content-Type: application/json'
+curl -XPOST http://172.16.21.51:8001/v1/prompt-guard -d '{"prompt": "hello"}' -H 'Content-Type: application/json'
 ```
 
 ## Using Llama Prompt Guard 2

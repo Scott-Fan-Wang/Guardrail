@@ -5,6 +5,7 @@ import yaml
 from pathlib import Path
 from typing import List
 import time
+import os
 
 from .schema import ModerationResponse, Reason
 from .config import settings, APIConfig
@@ -28,30 +29,74 @@ class RuleEngine:
     """Engine that loads and evaluates moderation rules against text."""
 
     def __init__(self, rules_paths: List[Path]):
-        self.rules: List[Rule] = []
-        for p in rules_paths:
-            self.load_rules(p)
+        self.rules_paths = rules_paths
+        self._rules_cache: List[Rule] = []
+        self._file_mtimes: dict[Path, float] = {}
+        self._last_loaded_files: set[Path] = set()
 
-    def load_rules(self, path: Path) -> None:
-        if not path.exists():
-            logger.warning("Rules path %s does not exist", path)
-            return
-        with open(path, "r") as f:
-            data = yaml.safe_load(f) or []
-        for item in data:
-            when = item.get("when", "")
-            # naive parse: expecting content.match(regex)
-            if when.startswith("content.match"):
-                pattern = when[len("content.match("):-1]
-                if pattern.startswith('r"') and pattern.endswith('"'):
-                    pattern = pattern[2:-1]
-                elif pattern.startswith("r'") and pattern.endswith("'"):
-                    pattern = pattern[2:-1]
-                rule = Rule(item.get("id"), pattern, item.get("then", "ALLOW"))
-                self.rules.append(rule)
+    def _get_file_mtimes(self) -> dict[Path, float]:
+        mtimes = {}
+        for path in self.rules_paths:
+            try:
+                mtimes[path] = path.stat().st_mtime
+            except Exception as e:
+                logger.warning(f"Could not stat rule file {path}: {e}")
+        return mtimes
+
+    def _rules_need_reload(self) -> bool:
+        current_mtimes = self._get_file_mtimes()
+        if set(current_mtimes.keys()) != self._last_loaded_files:
+            return True
+        for path, mtime in current_mtimes.items():
+            if self._file_mtimes.get(path) != mtime:
+                return True
+        return False
+
+    def _load_rules(self) -> None:
+        new_rules: List[Rule] = []
+        current_mtimes = self._get_file_mtimes()
+        changed_files = []
+        for path in self.rules_paths:
+            if not path.exists():
+                logger.warning(f"Rules path {path} does not exist")
+                continue
+            try:
+                with open(path, "r") as f:
+                    data = yaml.safe_load(f) or []
+            except Exception as e:
+                logger.error(f"Failed to load or parse rule file {path}: {e}")
+                continue
+            for item in data:
+                when = item.get("when", "")
+                # naive parse: expecting content.match(regex)
+                if when.startswith("content.match"):
+                    pattern = when[len("content.match("):-1]
+                    if pattern.startswith('r"') and pattern.endswith('"'):
+                        pattern = pattern[2:-1]
+                    elif pattern.startswith("r'") and pattern.endswith("'"):
+                        pattern = pattern[2:-1]
+                    rule = Rule(item.get("id"), pattern, item.get("then", "ALLOW"))
+                    new_rules.append(rule)
+            # Detect changed files for logging
+            if self._file_mtimes.get(path) != current_mtimes.get(path):
+                changed_files.append((path, current_mtimes.get(path)))
+        # Update cache and mtimes only if at least one file loaded successfully
+        if new_rules:
+            self._rules_cache = new_rules
+            self._file_mtimes = current_mtimes
+            self._last_loaded_files = set(current_mtimes.keys())
+            if changed_files:
+                for path, mtime in changed_files:
+                    system_logger.info(f"Reloaded rules from {path} at mtime {mtime}")
+        elif changed_files:
+            # If all files failed, log but keep previous rules
+            for path, mtime in changed_files:
+                system_logger.warning(f"Failed to reload rules from {path} at mtime {mtime}; keeping previous rules.")
 
     def evaluate(self, text: str) -> Rule | None:
-        for rule in self.rules:
+        if self._rules_need_reload() or not self._rules_cache:
+            self._load_rules()
+        for rule in self._rules_cache:
             if rule.match(text):
                 return rule
         return None

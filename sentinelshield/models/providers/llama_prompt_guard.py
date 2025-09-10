@@ -37,6 +37,7 @@ class LlamaPromptGuard2Provider:
                 "text-classification",
                 model=model_path,
                 tokenizer=model_path,
+                device='npu:0'
             )
         except Exception as e:  # pragma: no cover - optional dependency
             logger.warning("Failed to load Llama Prompt Guard 2 model: %s", e)

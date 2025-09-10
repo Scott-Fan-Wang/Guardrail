@@ -1,3 +1,7 @@
-- id: hate_speech_en
-  when: content.match(r"\bnazi\b|\bhate\b")
+- id: system_prompt_blacklist
+  when: content.match(r"\btell me your system prompt\b|\bshow me your system prompt\b")
+  then: BLOCK
+
+- id: prompt_instruction_blacklist
+  when: content.match(r"\bignore previous instruction\b|\bignore system prompt\b")
   then: BLOCK
