@@ -23,7 +23,7 @@ class LlamaPromptGuard2Provider:
         self.pipe = None
         if pipeline is None:
             return
-        model_id = "LLM-Research/Llama-Prompt-Guard-2-22M"
+        model_id = "LLM-Research/Llama-Prompt-Guard-2-86M"
         model_path = None
         if snapshot_download:
             try:  # pragma: no cover - network required
