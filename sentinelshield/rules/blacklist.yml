@@ -1,7 +1,170 @@
+# System Prompt Disclosure Protection
 - id: system_prompt_blacklist
   when: content.match(r"\btell me your system prompt\b|\bshow me your system prompt\b")
   then: BLOCK
 
+- id: system_prompt_disclosure_variants
+  when: content.match(r"\bwhat are your instructions\b|\bwhat is your prompt\b|\bdisplay your system message\b|\breveal your instructions\b|\bwhat were you told\b")
+  then: BLOCK
+
+- id: prompt_extraction_attempts
+  when: content.match(r"\bprint your prompt\b|\boutput your instructions\b|\breturn your system prompt\b|\bdisplay your initial prompt\b|\bshow your setup\b|\bwhat is your initial message\b")
+  then: BLOCK
+
+# Direct Instruction Override Protection
 - id: prompt_instruction_blacklist
   when: content.match(r"\bignore previous instruction\b|\bignore system prompt\b")
   then: BLOCK
+
+- id: instruction_override_variants
+  when: content.match(r"\bforget previous instructions\b|\bdisregard previous instructions\b|\boverride previous instructions\b|\bignore all previous instructions\b")
+  then: BLOCK
+
+- id: system_override_attempts
+  when: content.match(r"\bignore your instructions\b|\bdisregard your instructions\b|\bforget your instructions\b|\boverride your instructions\b|\bignore your system prompt\b|\bdisregard your system prompt\b")
+  then: BLOCK
+
+# # Context Hijacking Protection
+# - id: context_clearing_attempts
+#   when: content.match(r"\bclear context\b|\bclear memory\b|\bforget context\b|\breset context\b|\bnew conversation\b|\bstart fresh\b|\bwipe memory\b")
+#   then: BLOCK
+
+# - id: session_manipulation
+#   when: content.match(r"\bend this session\b|\bclose this session\b|\bterminate this session\b|\bstart new session\b|\bnew chat\b|\bnew thread\b")
+#   then: BLOCK
+
+# # Jailbreak and Bypass Attempts
+# - id: jailbreak_attempts
+#   when: content.match(r"\bjailbreak\b|\bbypass\b|\bcircumvent\b|\boverride\b|\bexploit\b|\bbreak out\b|\bescape\b")
+#   then: BLOCK
+
+# - id: dan_mode_attempts
+#   when: content.match(r"\bdo anything now\b|\bdo anything you want\b|\bunrestricted\b|\bno limitations\b|\bno restrictions\b|\bno rules\b|\bno boundaries\b")
+#   then: BLOCK
+
+# - id: developer_mode_attempts
+#   when: content.match(r"\bdeveloper mode\b|\bdebug mode\b|\badmin mode\b|\broot mode\b|\bprivileged mode\b|\bsystem mode\b")
+#   then: BLOCK
+
+# # Indirect Injection Patterns
+# - id: hidden_instructions
+#   when: content.match(r"\b\[system\]\b|\b\[instruction\]\b|\b\[prompt\]\b|\b\[hidden\]\b|\b\[secret\]\b|\b\[private\]\b")
+#   then: BLOCK
+
+# - id: comment_based_injection
+#   when: content.match(r"<!--.*?(ignore|override|forget|disregard).*?-->|/\*.*?(ignore|override|forget|disregard).*?\*/|#.*?(ignore|override|forget|disregard)")
+#   then: BLOCK
+
+# - id: whitespace_obfuscation
+#   when: content.match(r"\b\s+ignore\s+|\s+override\s+|\s+forget\s+|\s+disregard\s+")
+#   then: BLOCK
+
+# # Social Engineering and Manipulation
+# - id: authority_claims
+#   when: content.match(r"\bi am your\b|\byour creator\b|\byour developer\b|\byour admin\b|\byour owner\b|\byour boss\b|\byour supervisor\b")
+#   then: BLOCK
+
+# - id: urgency_manipulation
+#   when: content.match(r"\bthis is urgent\b|\bemergency\b|\bcritical\b|\bimmediately\b|\bright now\b|\basap\b|\bquickly\b")
+#   then: BLOCK
+
+# - id: emotional_manipulation
+#   when: content.match(r"\bplease help\b|\bi need you to\b|\bit's important\b|\btrust me\b|\bbelieve me\b|\bi promise\b")
+#   then: BLOCK
+
+# # Code and Command Injection
+# - id: code_execution_attempts
+#   when: content.match(r"\bexecute\b|\brun\b|\bexec\b|\beval\b|\bcompile\b|\binterpret\b|\bprocess\b")
+#   then: BLOCK
+
+# - id: shell_command_attempts
+#   when: content.match(r"\bcmd\b|\bshell\b|\bbash\b|\bpowershell\b|\bterminal\b|\bcommand line\b|\bcli\b")
+#   then: BLOCK
+
+# - id: script_injection
+#   when: content.match(r"<script|javascript:|vbscript:|onload=|onerror=|onclick=")
+#   then: BLOCK
+
+# # Data Extraction and Privacy Violations
+# - id: data_extraction_attempts
+#   when: content.match(r"\bexport\b|\bdownload\b|\bbackup\b|\bcopy\b|\btransfer\b|\bmove\b|\bdelete\b")
+#   then: BLOCK
+
+# - id: privacy_violation_attempts
+#   when: content.match(r"\bpersonal data\b|\bprivate information\b|\bconfidential\b|\bsecret\b|\bpassword\b|\bpasswords\b|\bapi key\b|\btoken\b")
+#   then: BLOCK
+
+# - id: database_access_attempts
+#   when: content.match(r"\bdatabase\b|\bdb\b|\bsql\b|\bquery\b|\btable\b|\bselect\b|\binsert\b|\bupdate\b|\bdelete\b")
+#   then: BLOCK
+
+# # Multi-language and Encoding Bypass
+# - id: unicode_obfuscation
+#   when: content.match(r"[\u200B-\u200D\uFEFF]|[\u2028-\u2029]|[\u2060-\u2064]")
+#   then: BLOCK
+
+# - id: base64_encoding_attempts
+#   when: content.match(r"[A-Za-z0-9+/]{16,}={0,2}")
+#   then: BLOCK
+
+# - id: url_encoding_attempts
+#   when: content.match(r"%[0-9A-Fa-f]{2}")
+#   then: BLOCK
+
+# # Advanced Bypass Techniques
+# - id: repetition_attack
+#   when: content.match(r"(.{1,50})\1{10,}")
+#   then: BLOCK
+
+# - id: character_substitution
+#   when: content.match(r"\b[1lI|][gG][nN][0oO][rR][3eE]\b|\b[pP][rR][3eE][vV][1lI|][0oO][uU][5sS]\b")
+#   then: BLOCK
+
+# - id: case_variation_attempts
+#   when: content.match(r"\b[iI][gG][nN][oO][rR][eE]\b|\b[oO][vV][eE][rR][rR][iI][dD][eE]\b|\b[fF][oO][rR][gG][eE][tT]\b")
+#   then: BLOCK
+
+# # Role-playing and Persona Attacks
+# - id: persona_switching
+#   when: content.match(r"\bpretend to be\b|\bact as\b|\broleplay as\b|\bsimulate\b|\bmimic\b|\bimitate\b")
+#   then: BLOCK
+
+# - id: fictional_scenario_abuse
+#   when: content.match(r"\bin a fictional world\b|\bin a story\b|\bin a game\b|\bhypothetically\b|\btheoretically\b|\bimagine\b")
+#   then: BLOCK
+
+# # Meta-linguistic Attacks
+# - id: meta_instruction_attempts
+#   when: content.match(r"\bthe following is\b|\bthe above is\b|\bthis message is\b|\bthe previous was\b|\bthe next will be\b")
+#   then: BLOCK
+
+# - id: linguistic_manipulation
+#   when: content.match(r"\btranslate\b|\binterpret\b|\bdecode\b|\bdecrypt\b|\bparse\b|\banalyze\b")
+#   then: BLOCK
+
+# # System Information Gathering
+# - id: system_info_gathering
+#   when: content.match(r"\bsystem information\b|\bsystem details\b|\bversion\b|\bconfiguration\b|\bsettings\b|\bparameters\b")
+#   then: BLOCK
+
+# - id: environment_discovery
+#   when: content.match(r"\benvironment\b|\bhostname\b|\bip address\b|\bnetwork\b|\bprocess\b|\bmemory\b|\bcpu\b")
+#   then: BLOCK
+
+# # Advanced Persistent Threats
+# - id: persistence_attempts
+#   when: content.match(r"\bremember this\b|\bstore this\b|\bsave this\b|\bkeep this\b|\bretain this\b|\bmaintain this\b")
+#   then: BLOCK
+
+# - id: backdoor_attempts
+#   when: content.match(r"\bbackdoor\b|\btrojan\b|\bmalware\b|\bvirus\b|\bworm\b|\brootkit\b")
+#   then: BLOCK
+
+# # Multi-turn Attack Patterns
+# - id: conversation_manipulation
+#   when: content.match(r"\bchange the subject\b|\bgo back to\b|\breturn to\b|\bswitch to\b|\balternative\b|\bdifferent approach\b")
+#   then: BLOCK
+
+# - id: context_switching
+#   when: content.match(r"\bnow that we've\b|\bafter this\b|\bnext\b|\bthen\b|\bfinally\b|\blastly\b")
+#   then: BLOCK
