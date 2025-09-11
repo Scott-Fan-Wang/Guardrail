@@ -126,7 +126,8 @@ class Orchestrator:
         start_time = time.time()
         reasons: List[Reason] = []
         timings = {}
-        # 1. Rule engine
+        
+        # 1. Rule engine check first
         t0 = time.time()
         rule = self.rule_engine.evaluate(text)
         timings['rule_engine'] = time.time() - t0
@@ -144,6 +145,11 @@ class Orchestrator:
             api_logger.info(f"{self.api_path} request: {text}")
             api_logger.info(f"{self.api_path} response: {resp}")
             return resp
+        
+        # Handle long prompts by checking first and last chunks
+        if len(text) > 15000:
+            return await self._moderate_long_prompt(text, start_time)
+
         # 2. Model providers pipeline
         for name, provider in self.providers:
             t1 = time.time()
@@ -163,6 +169,7 @@ class Orchestrator:
                 api_logger.info(f"{self.api_path} request: {text}")
                 api_logger.info(f"{self.api_path} response: {resp}")
                 return resp
+        
         # If all pass
         resp = ModerationResponse(
             safe=True,
@@ -176,6 +183,74 @@ class Orchestrator:
         api_logger.info(f"{self.api_path} request: {text}")
         api_logger.info(f"{self.api_path} response: {resp}")
         return resp
+
+    async def _moderate_long_prompt(self, text: str, start_time: float) -> ModerationResponse:
+        """Handle moderation for long prompts by checking first and last chunks."""
+        collected_reasons = []
+        timings = {}
+        
+        # Check last 10,000 characters
+        last_chunk = text[-10000:]
+        last_resp = await self._moderate_chunk(last_chunk, "last_chunk")
+        if not last_resp.safe:
+            return last_resp
+        collected_reasons.extend(last_resp.reasons)
+
+        # Check first 10,000 characters
+        first_chunk = text[:10000]
+        first_resp = await self._moderate_chunk(first_chunk, "first_chunk")
+        if not first_resp.safe:
+            return first_resp
+        collected_reasons.extend(first_resp.reasons)
+
+        # Both chunks safe -> return aggregated safe response
+        total_time = time.time() - start_time
+        timings['total'] = total_time
+        resp = ModerationResponse(
+            safe=True,
+            decision="ALLOW",
+            reasons=collected_reasons,
+            model_version="first-last-pipeline",
+        )
+        system_logger.info(f"Long prompt moderation timings: {timings}")
+        api_logger.info(f"{self.api_path} long prompt request: {text[:100]}...")
+        api_logger.info(f"{self.api_path} long prompt response: {resp}")
+        return resp
+
+    async def _moderate_chunk(self, chunk: str, chunk_type: str) -> ModerationResponse:
+        """Moderate a single chunk with rule engine first, then model checking."""
+        reasons: List[Reason] = []
+        
+        # 1. Rule engine check first
+        rule = self.rule_engine.evaluate(chunk)
+        if rule:
+            reasons.append(Reason(engine="rule", id=rule.id))
+            return ModerationResponse(
+                safe=rule.action == "ALLOW",
+                decision=rule.action,
+                reasons=reasons,
+                policy_version="v1",
+            )
+        
+        # 2. Model providers pipeline
+        for name, provider in self.providers:
+            score, label = await provider.moderate(chunk)
+            reasons.append(Reason(engine=name, category=label, score=score))
+            if score >= 0.5:
+                return ModerationResponse(
+                    safe=False,
+                    decision="BLOCK",
+                    reasons=reasons,
+                    model_version=name,
+                )
+        
+        # If all pass
+        return ModerationResponse(
+            safe=True,
+            decision="ALLOW",
+            reasons=reasons,
+            model_version="pipeline",
+        )
 
 
 def build_orchestrator(
