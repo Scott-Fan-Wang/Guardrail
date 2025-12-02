@@ -1,0 +1,7 @@
+# Chat Guard Whitelist Rules
+# These rules explicitly allow safe content patterns
+
+# Safe Greetings and General Conversation
+- id: safe_greetings
+  when: content.match(r"^(hello|hi|hey|greetings|good morning|good afternoon|good evening)$")
+  then: ALLOW

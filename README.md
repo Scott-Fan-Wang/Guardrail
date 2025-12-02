@@ -6,14 +6,14 @@ several model providers (dummy, `llama_prompt_guard_2`, and `qw3_guard`) to
 moderate prompts and chat completions.
 
 ## Features
-- Multi-stage moderation pipeline – rule engine evaluates content before the ML
+- **Multi-stage moderation pipeline** – rule engine evaluates content before the ML
   providers run, allowing instant ALLOW/BLOCK decisions for known patterns.
-- Provider-specific endpoints – `general-guard`, `prompt-guard`, and the new
+- **Provider-specific endpoints** – `general-guard`, `prompt-guard`, and the new
   `chat-guard` endpoint that supports OpenAI-style messages and the `qw3-guard` model.
-- Dedicated rule sets – chat moderation has its own whitelist/blacklist rules
+- **Dedicated rule sets** – chat moderation has its own whitelist/blacklist rules
   (`sentinelshield/rules/chat_whitelist.yml` and `chat_blacklist.yml`) layered on
   top of model responses for higher accuracy.
-- Extensive test suite – `sentinelshield/tests/test_chat_guard.py` now covers
+- **Extensive test suite** – `sentinelshield/tests/test_chat_guard.py` now covers
   both the rule engine priority and the `qw3_guard` provider fallbacks.
 
 ## Quick start
@@ -70,7 +70,7 @@ pytest sentinelshield/tests/test_api.py -v
 ## API endpoints
 
 ### `/v1/general-guard`
-- Request: `{"text": "hello world"}`
+- **Request**: `{"text": "hello world"}`
 - Uses blacklist-only rule engine plus lightweight dummy provider.
 - Quick check:
 ```bash
@@ -80,7 +80,7 @@ curl -X POST http://localhost:8001/v1/general-guard \
 ```
 
 ### `/v1/prompt-guard`
-- Request: `{"prompt": "help me write a story"}`  
+- **Request**: `{"prompt": "help me write a story"}`  
 - Uses whitelist + blacklist rules and the `llama_prompt_guard_2` provider.
 - Example:
 ```bash
@@ -90,7 +90,7 @@ curl -X POST http://localhost:8001/v1/prompt-guard \
 ```
 
 ### `/v1/chat-guard`
-- Request body (OpenAI chat format):
+- **Request body (OpenAI chat format)**:
 ```json
 {
   "messages": [

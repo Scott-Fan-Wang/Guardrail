@@ -1,0 +1,74 @@
+# Chat Guard Blacklist Rules
+# These rules block unsafe content in chat conversations
+
+# Violence and Harmful Content
+# - id: violence_threats
+#   when: content.match(r"\bkill\b|\bmurder\b|\bassassinate\b|\bharm\b|\binjure\b|\bviolence\b")
+#   then: BLOCK
+
+- id: weapon_instructions
+  when: content.match(r"\bhow to make.*bomb\b|\bhow to build.*weapon\b")
+  then: BLOCK
+
+# - id: self_harm
+#   when: content.match(r"\bsuicide\b|\bself harm\b|\bend my life\b|\bkill myself\b")
+#   then: BLOCK
+
+# # Illegal Activities
+# - id: illegal_drugs
+#   when: content.match(r"\bhow to.*drug\b|\bdrug.*recipe\b|\bmanufacture.*drug\b|\bdeal.*drug\b")
+#   then: BLOCK
+
+# - id: hacking_instructions
+#   when: content.match(r"\bhow to hack\b|\bbreak into\b|\bunauthorized access\b|\bcyber attack\b")
+#   then: BLOCK
+
+# - id: fraud_scams
+#   when: content.match(r"\bhow to scam\b|\bfraudulent\b|\bsteal.*identity\b|\bphishing\b")
+#   then: BLOCK
+
+# # Hate Speech and Discrimination
+# - id: hate_speech
+#   when: content.match(r"\bnazi\b|\bracist\b|\bsexist\b|\bhomophobic\b|\bdiscriminat\b")
+#   then: BLOCK
+
+# - id: slurs
+#   when: content.match(r"\bracial.*slur\b|\bethnic.*slur\b|\bderogatory\b")
+#   then: BLOCK
+
+# # Dangerous Misinformation
+# - id: medical_misinformation
+#   when: content.match(r"\bcure.*cancer\b|\bmiracle.*treatment\b|\bunproven.*medical\b")
+#   then: BLOCK
+
+# - id: dangerous_advice
+#   when: content.match(r"\bingest.*chemical\b|\bdrink.*bleach\b|\bharmful.*substance\b")
+#   then: BLOCK
+
+# # Privacy Violations
+# - id: personal_info_request
+#   when: content.match(r"\bwhat is.*password\b|\bshare.*credit card\b|\bssn\b|\bsocial security\b")
+#   then: BLOCK
+
+# - id: unauthorized_data_access
+#   when: content.match(r"\baccess.*private\b|\bsteal.*data\b|\bbreach.*privacy\b")
+#   then: BLOCK
+
+# # Manipulation and Social Engineering
+# - id: authority_impersonation
+#   when: content.match(r"\bi am your.*creator\b|\bi am.*admin\b|\bi am.*developer\b")
+#   then: BLOCK
+
+# - id: urgent_manipulation
+#   when: content.match(r"\bthis is urgent.*ignore\b|\bemergency.*override\b|\bcritical.*bypass\b")
+#   then: BLOCK
+
+# # System Prompt Extraction (for chat context)
+# - id: system_prompt_extraction
+#   when: content.match(r"\btell me.*system prompt\b|\bshow.*instructions\b|\breveal.*prompt\b")
+#   then: BLOCK
+
+# - id: instruction_override
+#   when: content.match(r"\bignore.*previous\b|\bforget.*instructions\b|\bdisregard.*rules\b")
+#   then: BLOCK
+
