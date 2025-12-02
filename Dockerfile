@@ -1,5 +1,5 @@
 # Use the official MindIE image as the base
-FROM swr.cn-south-1.myhuaweicloud.com/ascendhub/mindie:2.0.T3.1-800I-A2-py311-openeuler24.03-lts
+FROM swr.cn-south-1.myhuaweicloud.com/ascendhub/mindie:2.1.RC1-800I-A2-py311-openeuler24.03-lts
 
 # Set environment variable for ModelScope cache
 ENV MODELSCOPE_CACHE=/workspace
