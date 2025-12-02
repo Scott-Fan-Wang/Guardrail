@@ -20,6 +20,7 @@ class Settings(BaseModel):
     api_configs: Dict[str, APIConfig] = {
         "/v1/prompt-guard": APIConfig(providers=["llama_prompt_guard_2"]),
         "/v1/general-guard": APIConfig(providers=["dummy"]),
+        "/v1/chat-guard": APIConfig(providers=["qw3_guard"]),
     }
 
 
