@@ -1,8 +1,14 @@
 """Gunicorn configuration with per-worker Ascend NPU assignment.
 
-Each Gunicorn worker is assigned a dedicated NPU via ASCEND_RT_VISIBLE_DEVICES,
-so the worker process only sees one card and model code can always reference
-device="npu:0" regardless of total NPU count on the host.
+Each Gunicorn worker is assigned a dedicated NPU by setting
+SENTINELSHIELD_PROMPT_GUARD_DEVICE=npu:<id> in the post_fork hook.
+All NPUs remain visible to every worker process; the pipeline is simply
+initialised on the assigned card via the device string.
+
+Why not ASCEND_RT_VISIBLE_DEVICES?
+  Setting ASCEND_RT_VISIBLE_DEVICES after fork interferes with the Ascend HAL
+  that was partially initialised in the master process, causing drvErr=87
+  (BootRuntime failures).  Targeting npu:<id> directly avoids this entirely.
 
 Key env vars (all optional, sensible defaults shown):
   PORT                   – bind port           (default: 8001)
@@ -43,22 +49,17 @@ def post_fork(server, worker):
     worker.age is a 1-based counter incremented on every (re)spawn.
     Modulo arithmetic keeps the assignment in range even after crashes.
 
-    Result for 4 workers on 4 NPUs:
-        worker 1 → ASCEND_RT_VISIBLE_DEVICES=0  (npu:0)
-        worker 2 → ASCEND_RT_VISIBLE_DEVICES=1  (npu:1)
-        worker 3 → ASCEND_RT_VISIBLE_DEVICES=2  (npu:2)
-        worker 4 → ASCEND_RT_VISIBLE_DEVICES=3  (npu:3)
+    Result for 8 workers on 8 NPUs:
+        worker 1 → SENTINELSHIELD_PROMPT_GUARD_DEVICE=npu:0
+        worker 2 → SENTINELSHIELD_PROMPT_GUARD_DEVICE=npu:1
+        ...
+        worker 8 → SENTINELSHIELD_PROMPT_GUARD_DEVICE=npu:7
     """
     npu_id = (worker.age - 1) % _num_npus
 
-    # Restrict the worker to a single NPU (analogous to CUDA_VISIBLE_DEVICES).
-    # With only one card visible the model always sees it as npu:0.
-    os.environ["ASCEND_RT_VISIBLE_DEVICES"] = str(npu_id)
-    os.environ["SENTINELSHIELD_PROMPT_GUARD_DEVICE"] = "npu:0"
+    # Target the assigned card directly via the device string.
+    # All NPUs stay visible; no ASCEND_RT_VISIBLE_DEVICES manipulation is
+    # needed, which avoids HAL re-initialisation conflicts after fork.
+    os.environ["SENTINELSHIELD_PROMPT_GUARD_DEVICE"] = f"npu:{npu_id}"
 
-    server.log.info(
-        "Worker %s → NPU %s (ASCEND_RT_VISIBLE_DEVICES=%s)",
-        worker.age,
-        npu_id,
-        npu_id,
-    )
+    server.log.info("Worker %s → device npu:%s", worker.age, npu_id)

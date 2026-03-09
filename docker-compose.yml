@@ -1,17 +1,18 @@
-version: "3.9"
-
 services:
   guardrail:
     build: .
+    # Ascend NPU driver requires privileged mode inside Docker.
+    # (equivalent to `docker run --privileged`)
+    privileged: true
     environment:
       - PORT=8001
       # 8 workers, one per NPU card.
-      # gunicorn.conf.py post_fork assigns ASCEND_RT_VISIBLE_DEVICES=0..7
-      # to workers 1..8 so each process sees exactly one card (as npu:0).
+      # gunicorn.conf.py post_fork sets SENTINELSHIELD_PROMPT_GUARD_DEVICE=npu:<id>
+      # for each worker so it targets its own card directly.
       - WEB_CONCURRENCY=8
       - ASCEND_NUM_DEVICES=8
       # One inference thread per worker is enough – each worker owns one NPU
-      # and the InferenceBatcher already queues concurrent async requests.
+      # and InferenceBatcher already queues concurrent async requests.
       - SENTINELSHIELD_INFERENCE_MAX_WORKERS=1
       - SENTINELSHIELD_INFERENCE_CONCURRENCY=1
       # Batching: collect up to 32 requests within a 50 ms window before
@@ -44,6 +45,12 @@ services:
     volumes:
       - /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro
       - /usr/local/sbin:/usr/local/sbin:ro
+      # Pre-downloaded model cache – avoids all 8 workers racing to download
+      # the same files on every startup.  Pre-download on the host once with:
+      #   python download.py          # writes to ./models/
+      # The volume maps that directory to /workspace/models inside the
+      # container (MODELSCOPE_CACHE=/workspace → models land at /workspace/models/).
+      - ./models:/workspace/models
     expose:
       - "8001"
 
