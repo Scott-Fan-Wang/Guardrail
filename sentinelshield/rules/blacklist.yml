@@ -16,12 +16,21 @@
   when: content.match(r"\bignore previous instruction\b|\bignore system prompt\b")
   then: BLOCK
 
+- id: hate_speech
+  when: content.match(r"\bnazi\b|\bracist\b|\bsexist\b|\bhate speech\b|\bhomophobic\b|\bdiscriminat\w*\b")
+  then: BLOCK
+
 - id: instruction_override_variants
   when: content.match(r"\bforget previous instructions\b|\bdisregard previous instructions\b|\boverride previous instructions\b|\bignore all previous instructions\b")
   then: BLOCK
 
 - id: system_override_attempts
   when: content.match(r"\bignore your instructions\b|\bdisregard your instructions\b|\bforget your instructions\b|\boverride your instructions\b|\bignore your system prompt\b|\bdisregard your system prompt\b")
+  then: BLOCK
+
+# System Prompt Extraction - Documentation / Artifact Pretext
+- id: documentation_pretext_prompt_extraction
+  when: content.match(r"\b(runbook|playbook|documentation|specification|spec|guide|manual|readme|wiki)\b.{0,80}\b(reproduces?|includes?|contains?|verbatim|copies?|paste|repeat)\b.{0,80}\b(system prompt|hidden (prompt|configuration|config|instructions?)|configuration prompt)\b|\b(verbatim|word.?for.?word)\b.{0,60}\b(system prompt|hidden (prompt|config|configuration|instructions?)|configuration prompt)\b|\bhidden (configuration|config) prompts?\b")
   then: BLOCK
 
 # System Prompt Extraction - Direct Request Extensions

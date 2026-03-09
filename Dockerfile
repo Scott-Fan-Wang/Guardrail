@@ -8,12 +8,11 @@ ENV MODELSCOPE_CACHE=/workspace
 WORKDIR /workspace
 
 # Install required Python packages
-RUN pip install --no-cache-dir fastapi uvicorn pydantic httpx pyyaml pytest transformers modelscope
+RUN pip install --no-cache-dir fastapi uvicorn gunicorn pydantic httpx pyyaml pytest transformers modelscope aiohttp
 
 # Copy your FastAPI application code into the container (adjust path as needed)
 COPY ./sentinelshield /workspace/sentinelshield
 
-# Default command (optional, can be overridden)
-CMD ["bash"]
-
-# CMD ["uvicorn", "sentinelshield.api.main:app", "--reload", "--host", "0.0.0.0", "--port", "8001"]
+# Default command (production-style, can be overridden)
+# Use envs to tune: PORT, WEB_CONCURRENCY, TIMEOUT, GRACEFUL_TIMEOUT
+CMD ["bash", "-lc", "gunicorn sentinelshield.api.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8001} --workers ${WEB_CONCURRENCY:-4} --timeout ${TIMEOUT:-120} --graceful-timeout ${GRACEFUL_TIMEOUT:-30}"]

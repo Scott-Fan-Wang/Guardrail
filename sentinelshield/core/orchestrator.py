@@ -6,11 +6,16 @@ from pathlib import Path
 from typing import List
 import time
 import os
+import hashlib
+from collections import OrderedDict
 
 from .schema import ModerationResponse, Reason
 from .config import settings, APIConfig
 from .logger import logger, system_logger, api_logger
 from ..models import providers
+
+
+_CACHE_MISS = object()
 
 
 class Rule:
@@ -33,6 +38,41 @@ class RuleEngine:
         self._rules_cache: List[Rule] = []
         self._file_mtimes: dict[Path, float] = {}
         self._last_loaded_files: set[Path] = set()
+        self._last_check_time: float = 0.0
+        self._rule_by_id: dict[str, Rule] = {}
+        self._eval_cache: OrderedDict[bytes, str | None] = OrderedDict()
+
+        reload_interval_s = os.getenv("SENTINELSHIELD_RULE_RELOAD_INTERVAL_S", "5")
+        try:
+            v = float(reload_interval_s)
+        except Exception:
+            v = 5.0
+        # v <= 0 means never reload after initial load
+        self._reload_interval_s: float | None = None if v <= 0 else v
+        self._eval_cache_size = int(os.getenv("SENTINELSHIELD_RULE_EVAL_CACHE_SIZE", "4096") or "4096")
+        if self._eval_cache_size < 0:
+            self._eval_cache_size = 0
+
+    def _cache_key(self, text: str) -> bytes:
+        # Use a strong digest to minimize collision risk without storing full text in memory.
+        return hashlib.blake2b(text.encode("utf-8", errors="ignore"), digest_size=16).digest()
+
+    def _cache_get(self, key: bytes) -> str | None | object:
+        if self._eval_cache_size <= 0:
+            return _CACHE_MISS
+        try:
+            v = self._eval_cache.pop(key)
+        except KeyError:
+            return _CACHE_MISS
+        self._eval_cache[key] = v  # move to end
+        return v
+
+    def _cache_put(self, key: bytes, value: str | None) -> None:
+        if self._eval_cache_size <= 0:
+            return
+        self._eval_cache[key] = value
+        while len(self._eval_cache) > self._eval_cache_size:
+            self._eval_cache.popitem(last=False)
 
     def _get_file_mtimes(self) -> dict[Path, float]:
         mtimes = {}
@@ -83,8 +123,10 @@ class RuleEngine:
         # Update cache and mtimes only if at least one file loaded successfully
         if new_rules:
             self._rules_cache = new_rules
+            self._rule_by_id = {r.id: r for r in new_rules if r.id}
             self._file_mtimes = current_mtimes
             self._last_loaded_files = set(current_mtimes.keys())
+            self._eval_cache.clear()
             if changed_files:
                 for path, mtime in changed_files:
                     system_logger.info(f"Reloaded rules from {path} at mtime {mtime}")
@@ -94,11 +136,26 @@ class RuleEngine:
                 system_logger.warning(f"Failed to reload rules from {path} at mtime {mtime}; keeping previous rules.")
 
     def evaluate(self, text: str) -> Rule | None:
-        if self._rules_need_reload() or not self._rules_cache:
+        now = time.monotonic()
+        if not self._rules_cache:
             self._load_rules()
+            self._last_check_time = now
+        elif self._reload_interval_s is not None and (now - self._last_check_time) >= self._reload_interval_s:
+            self._last_check_time = now
+            if self._rules_need_reload():
+                self._load_rules()
+
+        key = self._cache_key(text)
+        cached = self._cache_get(key)
+        if cached is not _CACHE_MISS:
+            if cached is None:
+                return None
+            return self._rule_by_id.get(cached)
         for rule in self._rules_cache:
             if rule.match(text):
+                self._cache_put(key, rule.id)
                 return rule
+        self._cache_put(key, None)
         return None
 
 

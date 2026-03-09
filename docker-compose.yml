@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  guardrail:
+    build: .
+    environment:
+      - PORT=8001
+      - WEB_CONCURRENCY=2
+      # Optional tuning
+      # - SENTINELSHIELD_INFERENCE_MAX_WORKERS=4
+      # - SENTINELSHIELD_INFERENCE_CONCURRENCY=4
+      # - SENTINELSHIELD_PROMPT_GUARD_DEVICE=npu:0
+      # - SENTINELSHIELD_PROMPT_GUARD_BATCHING=1
+      # - SENTINELSHIELD_PROMPT_GUARD_MAX_BATCH_SIZE=32
+      # - SENTINELSHIELD_PROMPT_GUARD_MAX_WAIT_MS=50
+      # - SENTINELSHIELD_RULE_RELOAD_INTERVAL_S=5
+      # - SENTINELSHIELD_RULE_EVAL_CACHE_SIZE=4096
+      # QW3 remote guard settings
+      # - QW3_GUARD_API_KEY=...
+      # - QW3_GUARD_API_BASE=http://172.16.21.51:8036/v1
+      # - QW3_GUARD_MODEL=qw3-guard
+      # - QW3_GUARD_CONCURRENCY=200
+      # - QW3_GUARD_MAX_RETRIES=2
+    expose:
+      - "8001"
+    # If you run with Ascend NPU, you likely need to pass devices/volumes.
+    # devices:
+    #   - /dev/davinci0
+    #   - /dev/davinci_manager
+    #   - /dev/hisi_hdc
+    #   - /dev/devmm_svm
+    # volumes:
+    #   - /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro
+    #   - /usr/local/sbin:/usr/local/sbin:ro
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - guardrail
+    ports:
+      - "8001:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
