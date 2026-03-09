@@ -22,6 +22,15 @@ services:
       - SENTINELSHIELD_PROMPT_GUARD_MAX_WAIT_MS=50
       # Rule-engine cache – larger value = fewer regex re-evaluations.
       - SENTINELSHIELD_RULE_EVAL_CACHE_SIZE=8192
+      # Model paths – point to the host-mounted directories inside the container.
+      # Run `python download.py` on the host once to populate ./models/ before
+      # starting the stack.  No network access is performed inside the container.
+      - SENTINELSHIELD_PROMPT_GUARD_MODEL_PATH=/workspace/models/Llama-Prompt-Guard-2-86M
+      - SENTINELSHIELD_LLAMA_GUARD_MODEL_PATH=/workspace/models/Llama-Guard-4-12B
+      # Block all HuggingFace / Transformers network calls inside the container.
+      - TRANSFORMERS_OFFLINE=1
+      - HF_HUB_OFFLINE=1
+      - HF_DATASETS_OFFLINE=1
       # QW3 remote guard settings
       # - QW3_GUARD_API_KEY=...
       # - QW3_GUARD_API_BASE=http://172.16.21.51:8036/v1
@@ -45,12 +54,12 @@ services:
     volumes:
       - /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro
       - /usr/local/sbin:/usr/local/sbin:ro
-      # Pre-downloaded model cache – avoids all 8 workers racing to download
-      # the same files on every startup.  Pre-download on the host once with:
-      #   python download.py          # writes to ./models/
-      # The volume maps that directory to /workspace/models inside the
-      # container (MODELSCOPE_CACHE=/workspace → models land at /workspace/models/).
-      - ./models:/workspace/models
+      # Host-downloaded models – run `python download.py` once on the host to
+      # populate ./models/ before starting the stack.  Each sub-directory
+      # corresponds to one model and is referenced by its env var above.
+      # The container has no internet access; all model weights must be present
+      # in this mount before `docker compose up`.
+      - ./models:/workspace/models:ro
     expose:
       - "8001"
 

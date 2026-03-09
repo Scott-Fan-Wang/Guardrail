@@ -6,12 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 from ...core.logger import logger
 
 try:
-    from modelscope.hub.snapshot_download import snapshot_download
-except Exception as e:
-    logger.warning("modelscope not available: %s", e)
-    snapshot_download = None
-
-try:
     from transformers.pipelines import pipeline
 except Exception as e:
     logger.warning("transformers not available: %s", e)
@@ -43,15 +37,17 @@ class LlamaGuard4_12BProvider:
         self._sem = asyncio.Semaphore(_INFERENCE_CONCURRENCY)
         if pipeline is None:
             return
-        model_id = "LLM-Research/Llama-Guard-4-12B"
-        model_path = None
-        if snapshot_download:
-            try:
-                model_path = snapshot_download(model_id)
-            except Exception as e:
-                logger.warning("Failed to download model from ModelScope: %s", e)
-        if model_path is None:
-            model_path = model_id
+        model_path = os.getenv(
+            "SENTINELSHIELD_LLAMA_GUARD_MODEL_PATH",
+            "/workspace/models/Llama-Guard-4-12B",
+        )
+        if not os.path.isdir(model_path):
+            logger.error(
+                "Llama Guard 4 12B model not found at '%s'. "
+                "Run download.py on the host first, then re-mount ./models into the container.",
+                model_path,
+            )
+            return
         try:
             self.pipe = pipeline(
                 "text-classification",

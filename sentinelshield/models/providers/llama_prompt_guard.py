@@ -6,12 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from ...core.logger import logger
 
-try:  # optional dependency
-    from modelscope.hub.snapshot_download import snapshot_download
-except Exception as e:  # pragma: no cover - optional dependency
-    logger.warning("modelscope not available: %s", e)
-    snapshot_download = None
-
 try:
     from transformers import pipeline
 except Exception as e:  # pragma: no cover - optional dependency
@@ -126,15 +120,17 @@ class LlamaPromptGuard2Provider:
         self._batcher: InferenceBatcher | None = None
         if pipeline is None:
             return
-        model_id = "LLM-Research/Llama-Prompt-Guard-2-86M"
-        model_path = None
-        if snapshot_download:
-            try:  # pragma: no cover - network required
-                model_path = snapshot_download(model_id)
-            except Exception as e:  # pragma: no cover - optional dependency
-                logger.warning("Failed to download model from ModelScope: %s", e)
-        if model_path is None:
-            model_path = model_id
+        model_path = os.getenv(
+            "SENTINELSHIELD_PROMPT_GUARD_MODEL_PATH",
+            "/workspace/models/Llama-Prompt-Guard-2-86M",
+        )
+        if not os.path.isdir(model_path):
+            logger.error(
+                "Llama Prompt Guard 2 model not found at '%s'. "
+                "Run download.py on the host first, then re-mount ./models into the container.",
+                model_path,
+            )
+            return
         device = os.getenv("SENTINELSHIELD_PROMPT_GUARD_DEVICE", "npu:0")
         try:  # pragma: no cover - optional dependency
             self.pipe = pipeline(
