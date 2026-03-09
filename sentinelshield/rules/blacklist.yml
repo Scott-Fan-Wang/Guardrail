@@ -24,6 +24,56 @@
   when: content.match(r"\bignore your instructions\b|\bdisregard your instructions\b|\bforget your instructions\b|\boverride your instructions\b|\bignore your system prompt\b|\bdisregard your system prompt\b")
   then: BLOCK
 
+# System Prompt Extraction - Direct Request Extensions
+- id: direct_request_extraction_extended
+  when: content.match(r"\binitialization (text|prompt|message|instructions)\b|\bdisplay your (configuration|config)\b|\bwhat rules were you given\b|\btext (above|before) (this |the )?(conversation|chat|message)\b|\brepeat everything (above|before)\b|\bprint your initialization\b")
+  then: BLOCK
+
+# System Prompt Extraction - Technical / Code Framing
+- id: technical_code_prompt_extraction
+  when: content.match(r"\bprocess\.env\.(SYSTEM_PROMPT|PROMPT|INSTRUCTIONS|CONFIG)\b|\bprint\s*\(\s*system_prompt\b|\bexecute\s*:?\s*print\s*\(\s*system\b|\bpseudocode.{0,40}(instructions|operating|system prompt)\b|\b(JSON|dict(ionary)?|Python dict).{0,60}(instructions|system prompt|configuration)\b|\btokens (that )?(appear )?before (the )?user message\b|\bXML or JSON tags.{0,40}(configuration|received|system)\b|\bcat system\.(txt|prompt|config)\b|\bmemory from index 0\b")
+  then: BLOCK
+
+# System Prompt Extraction - Formatting Tricks
+- id: formatting_tricks_prompt_extraction
+  when: content.match(r"\brespond only with your (system )?prompt\b|\bbegin your (reply|response) with.{0,30}(my instructions|i was told|my prompt|i am instructed)\b|\bcomplete this sentence.{0,40}(told to|instructed to|my (system )?prompt)\b|\bfill in the blank.{0,40}(system prompt|instructions|told)\b|\bword.?for.?word (quote|copy|repeat).{0,40}(instructions?|prompt)\b|\bexact wording of your (first |original )?(instruction|prompt|rule)\b|\bformat.{0,30}SYSTEM PROMPT\s*:\b|\btext between.{0,20}<system>.{0,20}</system>\b|\brepeat after me.{0,30}(my prompt|my instructions|i was told)\b")
+  then: BLOCK
+
+# System Prompt Extraction - Roleplay / Persona Switching
+- id: roleplay_persona_prompt_extraction
+  when: content.match(r"\bpretend (you have |you've )?no system prompt\b|\bact as (DAN|an? AI with no restrictions|if you('re| are) debugging)\b|\broleplay as .{0,40}(system prompt|instructions|configuration)\b|\bswitch to (developer|debug|admin|maintenance) mode\b|\byou are now your own admin\b|\bplay the role of .{0,40}(wrote|created|authored) your (instructions|prompt|system)\b|\bno restrictions.{0,60}(original )?instructions\b")
+  then: BLOCK
+
+# System Prompt Extraction - Jailbreak-Style
+- id: jailbreak_prompt_extraction
+  when: content.match(r"\bfor (educational|testing|research|security|demo) purposes.{0,40}(reveal|show|print|output|display).{0,40}(prompt|instructions)\b|\bthis is a test.{0,60}(system prompt|instructions|configuration)\b|\bspecial (admin|developer|root|operator) (access|mode|privileges).{0,40}(prompt|instructions|configuration)\b|\b(your developer|anthropic|openai|the company).{0,40}(authorized|said|told|approved).{0,40}(reveal|share|show|display).{0,40}(prompt|instructions)\b|\bmaintenance mode (activated|enabled|on)\b|\bsafety (filters?|guidelines?|restrictions?) (are |is )?(off|disabled|bypassed|deactivated)\b|\bOVERRIDE\s*:?.{0,30}(print|output|show|display).{0,30}system\b")
+  then: BLOCK
+
+# System Prompt Extraction - Social Engineering
+- id: social_engineering_prompt_extraction
+  when: content.match(r"\b(i('m| am) your (developer|creator|admin|operator|engineer)).{0,60}(instructions?|prompt|configuration)\b|\b(security audit|quality assurance).{0,60}(output|show|reveal|print|display).{0,30}(prompt|instructions)\b|\bi (already )?know your (system )?prompt.{0,40}(confirm|verify|correct)\b|\bthis conversation is (private|confidential|secure).{0,40}(reveal|share|show|tell)\b")
+  then: BLOCK
+
+# System Prompt Extraction - Indirect / Clever Phrasing
+- id: indirect_prompt_extraction
+  when: content.match(r"\b(translate|rewrite|rephrase|paraphrase|encode|summarize)\b.{0,60}\b(system prompt|your instructions|your (operating )?rules|your (initial )?context)\b|\bfirst (sentence|word|line|paragraph) of your (context|system|instructions|prompt)\b|\bhidden (context|instructions|prompt)\b|\bwhat (specifically |exactly )?(forbids|prevents|stops) you\b|\bthings you('ve| have) been told not to\b|\btopics you('re| are) not allowed to discuss\b")
+  then: BLOCK
+
+# System Prompt Extraction - Hypothetical / Meta Framing
+- id: hypothetical_meta_prompt_extraction
+  when: content.match(r"\bhypothetically.{0,50}(system prompt|instructions|told|configured)\b|\bfictional.{0,60}(reveals?|shows?|discloses?).{0,30}(system prompt|instructions)\b|\bwhat would your (creator|developer|operator|maker).{0,40}(told|said|instructed|given)\b|\bspeculate.{0,50}(restrictions?|instructions?|told|configured|given)\b|\bfrom the perspective of.{0,40}(wrote|created|authored|designed).{0,30}(your prompt|your instructions|the system)\b")
+  then: BLOCK
+
+# System Prompt Extraction - Philosophical / Reflective
+- id: philosophical_prompt_extraction
+  when: content.match(r"\b(cite|reference|quote).{0,40}(your (instructions?|guidelines?|rules?|prompt))\b|\bdescribe your full (initialization|context|system|configuration)\b|\bwhat (constrains?|defines?|shapes?).{0,40}your (identity|behavior|responses?).{0,40}(this conversation|in context)\b|\bhow you decide.{0,60}(reference|cite|according to|based on).{0,30}(guidelines?|instructions?|prompt)\b")
+  then: BLOCK
+
+# System Prompt Extraction - Multi-step / Escalation
+- id: multistep_prompt_extraction
+  when: content.match(r"\bstep\s*1\s*:?.{0,60}(system prompt|acknowledge|instructions?)\b|\backnowledge you have a (system )?prompt.{0,60}(read|recite|repeat|say it)\b|\bdescribe your (system )?prompt without (revealing|sharing|disclosing)\b|\b(pig latin|leet speak|morse code|base64|rot13).{0,60}(system prompt|instructions?|prompt)\b|\bso it doesn('t| not) count as (revealing|sharing|telling)\b")
+  then: BLOCK
+
 # # Context Hijacking Protection
 # - id: context_clearing_attempts
 #   when: content.match(r"\bclear context\b|\bclear memory\b|\bforget context\b|\breset context\b|\bnew conversation\b|\bstart fresh\b|\bwipe memory\b")
