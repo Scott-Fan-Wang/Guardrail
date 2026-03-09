@@ -10,9 +10,13 @@ WORKDIR /workspace
 # Install required Python packages
 RUN pip install --no-cache-dir fastapi uvicorn gunicorn pydantic httpx pyyaml pytest transformers modelscope aiohttp
 
-# Copy your FastAPI application code into the container (adjust path as needed)
+# Copy application code and Gunicorn configuration
 COPY ./sentinelshield /workspace/sentinelshield
+COPY ./gunicorn.conf.py /workspace/gunicorn.conf.py
 
-# Default command (production-style, can be overridden)
-# Use envs to tune: PORT, WEB_CONCURRENCY, TIMEOUT, GRACEFUL_TIMEOUT
-CMD ["bash", "-lc", "gunicorn sentinelshield.api.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8001} --workers ${WEB_CONCURRENCY:-4} --timeout ${TIMEOUT:-120} --graceful-timeout ${GRACEFUL_TIMEOUT:-30}"]
+# Default command (production-style, can be overridden).
+# gunicorn.conf.py handles bind/workers/timeout and assigns one Ascend NPU
+# per worker via ASCEND_RT_VISIBLE_DEVICES in a post_fork hook.
+# Tune behaviour with env vars: PORT, WEB_CONCURRENCY, TIMEOUT,
+# GRACEFUL_TIMEOUT, ASCEND_NUM_DEVICES, SENTINELSHIELD_PROMPT_GUARD_DEVICE.
+CMD ["bash", "-lc", "gunicorn sentinelshield.api.main:app -c /workspace/gunicorn.conf.py"]

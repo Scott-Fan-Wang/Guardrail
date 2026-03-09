@@ -27,12 +27,9 @@ pip install 'httpx<0.28' -U
 # Dev (auto-reload)
 uvicorn sentinelshield.api.main:app --reload --host 0.0.0.0 --port 8001
 
-# Prod (multi-worker)
-WEB_CONCURRENCY=4 gunicorn sentinelshield.api.main:app \
-  -k uvicorn.workers.UvicornWorker \
-  --bind 0.0.0.0:8001 \
-  --timeout 120 \
-  --graceful-timeout 30
+# Prod (multi-worker, one NPU per worker via gunicorn.conf.py)
+WEB_CONCURRENCY=4 ASCEND_NUM_DEVICES=4 gunicorn sentinelshield.api.main:app \
+  -c gunicorn.conf.py
 ```
 
 ### Docker option
@@ -101,6 +98,37 @@ swr.cn-south-1.myhuaweicloud.com/ascendhub/mindie:2.0.T3.1-800I-A2-py311-openeul
 
 export MODELSCOPE_CACHE=/data/scott/Guardrail/models
 ```
+
+### NPU assignment per worker
+
+`gunicorn.conf.py` contains a `post_fork` hook that runs in each worker
+process **before** any application module is imported. It sets
+`ASCEND_RT_VISIBLE_DEVICES` so that every worker sees exactly one physical
+NPU, and forces `SENTINELSHIELD_PROMPT_GUARD_DEVICE=npu:0` so the model
+code always references the first (and only) visible card.
+
+| env var | default | purpose |
+|---|---|---|
+| `WEB_CONCURRENCY` | `4` | number of Gunicorn workers |
+| `ASCEND_NUM_DEVICES` | `4` | physical NPU count; workers are round-robin assigned |
+| `PORT` | `8001` | bind port |
+| `TIMEOUT` | `120` | Gunicorn worker timeout (s) |
+| `GRACEFUL_TIMEOUT` | `30` | graceful shutdown timeout (s) |
+
+Worker → NPU mapping for `WEB_CONCURRENCY=4 ASCEND_NUM_DEVICES=4`:
+```
+worker 1 → ASCEND_RT_VISIBLE_DEVICES=0
+worker 2 → ASCEND_RT_VISIBLE_DEVICES=1
+worker 3 → ASCEND_RT_VISIBLE_DEVICES=2
+worker 4 → ASCEND_RT_VISIBLE_DEVICES=3
+```
+
+If `WEB_CONCURRENCY > ASCEND_NUM_DEVICES` the assignment wraps around
+(e.g. worker 5 → NPU 0) so multiple workers share a card.
+
+> **Important**: do **not** add `--preload-app` or set `preload_app=True`.
+> With preloading the provider singletons are created in the master process
+> before the hook runs, so every worker would use the same NPU.
 
 ### Testing
 ```bash

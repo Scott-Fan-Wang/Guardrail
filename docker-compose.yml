@@ -5,33 +5,47 @@ services:
     build: .
     environment:
       - PORT=8001
-      - WEB_CONCURRENCY=2
-      # Optional tuning
-      # - SENTINELSHIELD_INFERENCE_MAX_WORKERS=4
-      # - SENTINELSHIELD_INFERENCE_CONCURRENCY=4
-      # - SENTINELSHIELD_PROMPT_GUARD_DEVICE=npu:0
-      # - SENTINELSHIELD_PROMPT_GUARD_BATCHING=1
-      # - SENTINELSHIELD_PROMPT_GUARD_MAX_BATCH_SIZE=32
-      # - SENTINELSHIELD_PROMPT_GUARD_MAX_WAIT_MS=50
-      # - SENTINELSHIELD_RULE_RELOAD_INTERVAL_S=5
-      # - SENTINELSHIELD_RULE_EVAL_CACHE_SIZE=4096
+      # 8 workers, one per NPU card.
+      # gunicorn.conf.py post_fork assigns ASCEND_RT_VISIBLE_DEVICES=0..7
+      # to workers 1..8 so each process sees exactly one card (as npu:0).
+      - WEB_CONCURRENCY=8
+      - ASCEND_NUM_DEVICES=8
+      # One inference thread per worker is enough – each worker owns one NPU
+      # and the InferenceBatcher already queues concurrent async requests.
+      - SENTINELSHIELD_INFERENCE_MAX_WORKERS=1
+      - SENTINELSHIELD_INFERENCE_CONCURRENCY=1
+      # Batching: collect up to 32 requests within a 50 ms window before
+      # running a single NPU forward pass.  Adjust to taste.
+      - SENTINELSHIELD_PROMPT_GUARD_BATCHING=1
+      - SENTINELSHIELD_PROMPT_GUARD_MAX_BATCH_SIZE=32
+      - SENTINELSHIELD_PROMPT_GUARD_MAX_WAIT_MS=50
+      # Rule-engine cache – larger value = fewer regex re-evaluations.
+      - SENTINELSHIELD_RULE_EVAL_CACHE_SIZE=8192
       # QW3 remote guard settings
       # - QW3_GUARD_API_KEY=...
       # - QW3_GUARD_API_BASE=http://172.16.21.51:8036/v1
       # - QW3_GUARD_MODEL=qw3-guard
       # - QW3_GUARD_CONCURRENCY=200
       # - QW3_GUARD_MAX_RETRIES=2
+    devices:
+      # All 8 Ascend NPU compute cards
+      - /dev/davinci0
+      - /dev/davinci1
+      - /dev/davinci2
+      - /dev/davinci3
+      - /dev/davinci4
+      - /dev/davinci5
+      - /dev/davinci6
+      - /dev/davinci7
+      # Ascend management / IPC devices (required by the driver)
+      - /dev/davinci_manager
+      - /dev/hisi_hdc
+      - /dev/devmm_svm
+    volumes:
+      - /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro
+      - /usr/local/sbin:/usr/local/sbin:ro
     expose:
       - "8001"
-    # If you run with Ascend NPU, you likely need to pass devices/volumes.
-    # devices:
-    #   - /dev/davinci0
-    #   - /dev/davinci_manager
-    #   - /dev/hisi_hdc
-    #   - /dev/devmm_svm
-    # volumes:
-    #   - /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro
-    #   - /usr/local/sbin:/usr/local/sbin:ro
 
   nginx:
     image: nginx:1.27-alpine
@@ -41,4 +55,3 @@ services:
       - "8001:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-
