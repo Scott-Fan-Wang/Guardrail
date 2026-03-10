@@ -1,17 +1,27 @@
 from __future__ import annotations
 
 import asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from .routers import moderation, admin, prompt_guard, chat_guard
 from ..models.providers import get_provider
-from ..core.logger import stop_logging
+from ..core.logger import stop_logging, logger
 
 app = FastAPI(title="SentinelShield")
 app.include_router(moderation.router)
 app.include_router(admin.router)
 app.include_router(prompt_guard.router)
 app.include_router(chat_guard.router)
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.error(f"Unhandled exception on {request.method} {request.url.path}: {type(exc).__name__}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "error": type(exc).__name__},
+    )
 
 
 @app.on_event("shutdown")

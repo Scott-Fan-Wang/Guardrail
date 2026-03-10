@@ -39,8 +39,8 @@ http {
       proxy_set_header X-Forwarded-Proto $scheme;
 
       proxy_connect_timeout 5s;
-      proxy_send_timeout 60s;
-      proxy_read_timeout 60s;
+      proxy_send_timeout 180s;
+      proxy_read_timeout 180s;
 
       # Buffer upstream responses so upstream can return sooner.
       proxy_buffering on;
