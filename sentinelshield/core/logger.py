@@ -3,8 +3,11 @@ import os
 import queue
 from logging.handlers import RotatingFileHandler, QueueHandler, QueueListener
 
+_FILE_LOGGING_DISABLED = os.environ.get('DISABLE_FILE_LOGGING', '').lower() in ('1', 'true', 'yes')
+
 # Ensure logs directory exists
-os.makedirs('logs', exist_ok=True)
+if not _FILE_LOGGING_DISABLED:
+    os.makedirs('logs', exist_ok=True)
 
 system_log_path = 'logs/system.log'
 api_log_path = 'logs/api.log'
@@ -13,8 +16,10 @@ _log_queue: queue.Queue = queue.Queue(-1)
 _listener: QueueListener | None = None
 
 
-def _ensure_listener_started() -> QueueListener:
+def _ensure_listener_started() -> QueueListener | None:
     global _listener
+    if _FILE_LOGGING_DISABLED:
+        return None
     if _listener is not None:
         return _listener
 
@@ -43,14 +48,14 @@ _ensure_listener_started()
 system_logger = logging.getLogger('sentinelshield.system')
 system_logger.setLevel(logging.INFO)
 system_logger.propagate = False
-if not any(isinstance(h, QueueHandler) for h in system_logger.handlers):
+if not _FILE_LOGGING_DISABLED and not any(isinstance(h, QueueHandler) for h in system_logger.handlers):
     system_logger.addHandler(QueueHandler(_log_queue))
 
 # API logger (async)
 api_logger = logging.getLogger('sentinelshield.api')
 api_logger.setLevel(logging.INFO)
 api_logger.propagate = False
-if not any(isinstance(h, QueueHandler) for h in api_logger.handlers):
+if not _FILE_LOGGING_DISABLED and not any(isinstance(h, QueueHandler) for h in api_logger.handlers):
     api_logger.addHandler(QueueHandler(_log_queue))
 
 # Default logger for backward compatibility
