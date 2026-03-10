@@ -19,12 +19,13 @@ services:
       # One inference thread per worker is enough – each worker owns one NPU
       # and InferenceBatcher already queues concurrent async requests.
       - SENTINELSHIELD_INFERENCE_MAX_WORKERS=1
-      - SENTINELSHIELD_INFERENCE_CONCURRENCY=1
+      - SENTINELSHIELD_INFERENCE_CONCURRENCY=2
       # Batching: collect up to 32 requests within a 50 ms window before
       # running a single NPU forward pass.  Adjust to taste.
       - SENTINELSHIELD_PROMPT_GUARD_BATCHING=1
-      - SENTINELSHIELD_PROMPT_GUARD_MAX_BATCH_SIZE=128
-      - SENTINELSHIELD_PROMPT_GUARD_MAX_WAIT_MS=150
+      - SENTINELSHIELD_PROMPT_GUARD_MAX_BATCH_SIZE=64
+      - SENTINELSHIELD_PROMPT_GUARD_MAX_WAIT_MS=25
+      - SENTINELSHIELD_INFERENCE_CACHE_SIZE=4096
       - TIMEOUT=180
       # Rule-engine cache – larger value = fewer regex re-evaluations.
       - SENTINELSHIELD_RULE_EVAL_CACHE_SIZE=8192

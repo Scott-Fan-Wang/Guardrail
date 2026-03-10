@@ -46,14 +46,14 @@ _ensure_listener_started()
 
 # System logger (async)
 system_logger = logging.getLogger('sentinelshield.system')
-system_logger.setLevel(logging.INFO)
+system_logger.setLevel(logging.WARNING if _FILE_LOGGING_DISABLED else logging.INFO)
 system_logger.propagate = False
 if not _FILE_LOGGING_DISABLED and not any(isinstance(h, QueueHandler) for h in system_logger.handlers):
     system_logger.addHandler(QueueHandler(_log_queue))
 
 # API logger (async)
 api_logger = logging.getLogger('sentinelshield.api')
-api_logger.setLevel(logging.INFO)
+api_logger.setLevel(logging.WARNING if _FILE_LOGGING_DISABLED else logging.INFO)
 api_logger.propagate = False
 if not _FILE_LOGGING_DISABLED and not any(isinstance(h, QueueHandler) for h in api_logger.handlers):
     api_logger.addHandler(QueueHandler(_log_queue))

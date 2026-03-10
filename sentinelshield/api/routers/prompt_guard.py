@@ -24,4 +24,5 @@ class PromptGuardRequest(BaseModel):
 
 @router.post("/v1/prompt-guard")
 async def prompt_guard(req: PromptGuardRequest):
-    return await orc.moderate(req.prompt)
+    resp = await orc.moderate(req.prompt)
+    return resp.to_response()

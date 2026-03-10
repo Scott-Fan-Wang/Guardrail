@@ -11,7 +11,7 @@ ENV HF_DATASETS_OFFLINE=1
 WORKDIR /workspace
 
 # Install required Python packages (modelscope removed – no in-container downloads)
-RUN pip install --no-cache-dir fastapi uvicorn gunicorn pydantic httpx pyyaml pytest transformers aiohttp
+RUN pip install --no-cache-dir fastapi uvicorn gunicorn pydantic httpx pyyaml pytest transformers aiohttp orjson
 
 # Copy application code and Gunicorn configuration
 COPY ./sentinelshield /workspace/sentinelshield

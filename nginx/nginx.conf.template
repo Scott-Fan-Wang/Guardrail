@@ -20,12 +20,13 @@ http {
   keepalive_requests 10000;
 
   upstream guardrail_upstream {
+    least_conn;
     zone guardrail_upstream 64k;
     server guardrail:8001 resolve;        # local container on Server 1
     # Set SERVER2_IP in the nginx container environment to enable Server 2 load-balancing.
     # Example: SERVER2_IP=172.16.21.52 docker compose up -d
     server ${SERVER2_UPSTREAM} resolve backup;
-    keepalive 512;
+    keepalive 1024;
   }
 
   server {
@@ -46,6 +47,9 @@ http {
       proxy_buffering on;
       proxy_buffer_size 16k;
       proxy_buffers 8 32k;
+
+      proxy_next_upstream error timeout http_503;
+      proxy_next_upstream_tries 2;
 
       proxy_pass http://guardrail_upstream;
     }

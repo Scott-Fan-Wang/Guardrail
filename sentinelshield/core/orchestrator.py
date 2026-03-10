@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import logging
+import os
 import re
-import yaml
+import time
+from collections import OrderedDict
 from pathlib import Path
 from typing import List
-import time
-import os
-import hashlib
-from collections import OrderedDict
+
+import yaml
 
 from .schema import ModerationResponse, Reason
 from .config import settings, APIConfig
@@ -187,15 +189,22 @@ class Orchestrator:
             else:
                 logger.warning(f"Provider {provider_name} not available for API {api_path}")
 
+    def _log_response(self, text: str, resp: ModerationResponse, start_time: float) -> None:
+        if system_logger.isEnabledFor(logging.INFO):
+            total_time = time.monotonic() - start_time
+            system_logger.info(f"Moderation timings: total={total_time:.4f}s")
+        if api_logger.isEnabledFor(logging.INFO):
+            n, h = _text_fingerprint(text)
+            api_logger.info(f"{self.api_path} request: len={n} hash={h}")
+        if api_logger.isEnabledFor(logging.DEBUG):
+            api_logger.debug(f"{self.api_path} response: {resp}")
+
     async def moderate(self, text: str) -> ModerationResponse:
-        start_time = time.time()
+        start_time = time.monotonic()
         reasons: List[Reason] = []
-        timings = {}
-        
+
         # 1. Rule engine check first
-        t0 = time.time()
         rule = self.rule_engine.evaluate(text)
-        timings['rule_engine'] = time.time() - t0
         if rule:
             reasons.append(Reason(engine="rule", id=rule.id))
             resp = ModerationResponse(
@@ -204,23 +213,16 @@ class Orchestrator:
                 reasons=reasons,
                 policy_version="v1",
             )
-            total_time = time.time() - start_time
-            timings['total'] = total_time
-            system_logger.info(f"Moderation timings: {timings}")
-            n, h = _text_fingerprint(text)
-            api_logger.info(f"{self.api_path} request: len={n} hash={h}")
-            api_logger.debug(f"{self.api_path} response: {resp}")
+            self._log_response(text, resp, start_time)
             return resp
-        
+
         # Handle long prompts by checking first and last chunks
         if len(text) > 15000:
             return await self._moderate_long_prompt(text, start_time)
 
         # 2. Model providers pipeline
         for name, provider in self.providers:
-            t1 = time.time()
             score, label = await provider.moderate(text)
-            timings[name] = time.time() - t1
             reasons.append(Reason(engine=name, category=label, score=score))
             if score >= 0.5:
                 resp = ModerationResponse(
@@ -229,14 +231,9 @@ class Orchestrator:
                     reasons=reasons,
                     model_version=name,
                 )
-                total_time = time.time() - start_time
-                timings['total'] = total_time
-                system_logger.info(f"Moderation timings: {timings}")
-                n, h = _text_fingerprint(text)
-                api_logger.info(f"{self.api_path} request: len={n} hash={h}")
-                api_logger.debug(f"{self.api_path} response: {resp}")
+                self._log_response(text, resp, start_time)
                 return resp
-        
+
         # If all pass
         resp = ModerationResponse(
             safe=True,
@@ -244,19 +241,13 @@ class Orchestrator:
             reasons=reasons,
             model_version="pipeline",
         )
-        total_time = time.time() - start_time
-        timings['total'] = total_time
-        system_logger.info(f"Moderation timings: {timings}")
-        n, h = _text_fingerprint(text)
-        api_logger.info(f"{self.api_path} request: len={n} hash={h}")
-        api_logger.debug(f"{self.api_path} response: {resp}")
+        self._log_response(text, resp, start_time)
         return resp
 
     async def _moderate_long_prompt(self, text: str, start_time: float) -> ModerationResponse:
         """Handle moderation for long prompts by checking first and last chunks."""
         collected_reasons = []
-        timings = {}
-        
+
         # Check last and first 10,000 characters in parallel to reduce latency.
         last_chunk = text[-10000:]
         first_chunk = text[:10000]
@@ -275,18 +266,13 @@ class Orchestrator:
         collected_reasons.extend(first_resp.reasons)
 
         # Both chunks safe -> return aggregated safe response
-        total_time = time.time() - start_time
-        timings['total'] = total_time
         resp = ModerationResponse(
             safe=True,
             decision="ALLOW",
             reasons=collected_reasons,
             model_version="first-last-pipeline",
         )
-        system_logger.info(f"Long prompt moderation timings: {timings}")
-        n, h = _text_fingerprint(text)
-        api_logger.info(f"{self.api_path} long prompt request: len={n} hash={h}")
-        api_logger.debug(f"{self.api_path} long prompt response: {resp}")
+        self._log_response(text, resp, start_time)
         return resp
 
     async def _moderate_chunk(self, chunk: str, chunk_type: str) -> ModerationResponse:

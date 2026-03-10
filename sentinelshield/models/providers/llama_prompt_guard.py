@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from ...core.logger import logger
+
 
 try:
     from transformers import pipeline
@@ -24,6 +27,8 @@ def _env_int(name: str, default: int) -> int:
 _INFERENCE_MAX_WORKERS = _env_int("SENTINELSHIELD_INFERENCE_MAX_WORKERS", 4)
 _INFERENCE_POOL = ThreadPoolExecutor(max_workers=_INFERENCE_MAX_WORKERS)
 _INFERENCE_CONCURRENCY = _env_int("SENTINELSHIELD_INFERENCE_CONCURRENCY", _INFERENCE_MAX_WORKERS)
+
+_CACHE_MISS = object()
 
 
 def _pipe_call(pipe, text: str):
@@ -57,14 +62,21 @@ class InferenceBatcher:
         self._max_wait_s = max(0, max_wait_ms) / 1000.0
 
         self._queue: asyncio.Queue[_QueuedReq] = asyncio.Queue()
-        self._task: asyncio.Task | None = None
+        self._batch_queue: asyncio.Queue[list[_QueuedReq]] = asyncio.Queue()
+        self._collector_task: asyncio.Task | None = None
+        self._executor_task: asyncio.Task | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
 
     def _ensure_runner(self) -> None:
         loop = asyncio.get_running_loop()
-        if self._task is None or self._task.done() or self._loop is not loop:
+        if (
+            self._collector_task is None
+            or self._collector_task.done()
+            or self._loop is not loop
+        ):
             self._loop = loop
-            self._task = loop.create_task(self._runner())
+            self._collector_task = loop.create_task(self._collector_loop())
+            self._executor_task = loop.create_task(self._executor_loop())
 
     async def predict_one(self, text: str):
         self._ensure_runner()
@@ -73,7 +85,8 @@ class InferenceBatcher:
         await self._queue.put(_QueuedReq(text=text, fut=fut))
         return await fut
 
-    async def _runner(self) -> None:
+    async def _collector_loop(self) -> None:
+        """Continuously drain the request queue into batches."""
         while True:
             first = await self._queue.get()
             batch: list[_QueuedReq] = [first]
@@ -93,6 +106,12 @@ class InferenceBatcher:
                 while len(batch) < self._max_batch_size and not self._queue.empty():
                     batch.append(self._queue.get_nowait())
 
+            await self._batch_queue.put(batch)
+
+    async def _executor_loop(self) -> None:
+        """Pull assembled batches and run inference, overlapping with collection."""
+        while True:
+            batch = await self._batch_queue.get()
             texts = [r.text for r in batch]
             try:
                 async with self._sem:
@@ -118,6 +137,11 @@ class LlamaPromptGuard2Provider:
         self.pipe = None
         self._sem = asyncio.Semaphore(_INFERENCE_CONCURRENCY)
         self._batcher: InferenceBatcher | None = None
+
+        # Inference result cache (same pattern as RuleEngine._eval_cache)
+        self._cache: OrderedDict[bytes, tuple[float, str | None]] = OrderedDict()
+        self._cache_size = _env_int("SENTINELSHIELD_INFERENCE_CACHE_SIZE", 4096)
+
         if pipeline is None:
             return
         model_path = os.getenv(
@@ -155,19 +179,45 @@ class LlamaPromptGuard2Provider:
                 max_wait_ms=max_wait_ms,
             )
 
+    def _cache_key(self, text: str) -> bytes:
+        return hashlib.blake2b(text.encode("utf-8", errors="ignore"), digest_size=16).digest()
+
+    def _cache_get(self, key: bytes) -> tuple[float, str | None] | object:
+        if self._cache_size <= 0:
+            return _CACHE_MISS
+        try:
+            v = self._cache.pop(key)
+        except KeyError:
+            return _CACHE_MISS
+        self._cache[key] = v  # move to end
+        return v
+
+    def _cache_put(self, key: bytes, value: tuple[float, str | None]) -> None:
+        if self._cache_size <= 0:
+            return
+        self._cache[key] = value
+        while len(self._cache) > self._cache_size:
+            self._cache.popitem(last=False)
+
     async def moderate(self, text: str) -> tuple[float, str | None]:
         score = 0.0
         label = None
         if self.pipe is None:
             await asyncio.sleep(0)
             return score, label
+
+        # Check inference cache
+        key = self._cache_key(text)
+        cached = self._cache_get(key)
+        if cached is not _CACHE_MISS:
+            return cached  # type: ignore[return-value]
+
         if self._batcher is not None:
             res = await self._batcher.predict_one(text)
         else:
             async with self._sem:
                 loop = asyncio.get_running_loop()
                 res = await loop.run_in_executor(_INFERENCE_POOL, _pipe_call, self.pipe, text)
-        # print(f"Received list response: {res}")
         if isinstance(res, list):
             res = res[0]
         if isinstance(res, dict):
@@ -175,7 +225,9 @@ class LlamaPromptGuard2Provider:
             score = float(res.get("score", 0.0))
         if label == 'LABEL_0':
             score = 1 - score
-        return score, label
+        result = (score, label)
+        self._cache_put(key, result)
+        return result
 
 
 provider = LlamaPromptGuard2Provider()

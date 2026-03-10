@@ -17,4 +17,4 @@ class ModerationRequest(BaseModel):
 @router.post("/v1/general-guard")
 async def moderate(req: ModerationRequest):
     resp = await orc.moderate(req.text)
-    return resp
+    return resp.to_response()
