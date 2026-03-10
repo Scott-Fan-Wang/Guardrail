@@ -68,13 +68,20 @@ services:
       # The container has no internet access; all model weights must be present
       # in this mount before `docker compose up`.
       - ./models:/workspace/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/v1/healthz')"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 30s
     expose:
       - "8001"
 
   nginx:
     image: nginx:1.27-alpine
     depends_on:
-      - guardrail
+      guardrail:
+        condition: service_healthy
     environment:
       # Set SERVER2_IP on Server 1 to enable load-balancing to Server 2.
       # Example: SERVER2_IP=172.16.21.52 docker compose up -d
