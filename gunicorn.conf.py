@@ -30,9 +30,10 @@ import os
 # ---------------------------------------------------------------------------
 bind = f"0.0.0.0:{os.getenv('PORT', '8001')}"
 workers = int(os.getenv("WEB_CONCURRENCY", "8"))
-worker_class = "uvicorn.workers.UvicornWorker"
+worker_class = "sentinelshield.api.uvicorn_worker.ConfigurableUvicornWorker"
 timeout = int(os.getenv("TIMEOUT", "120"))
 graceful_timeout = int(os.getenv("GRACEFUL_TIMEOUT", "30"))
+backlog = int(os.getenv("GUNICORN_BACKLOG", "4096"))
 
 # ---------------------------------------------------------------------------
 # NPU assignment

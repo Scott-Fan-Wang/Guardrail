@@ -1,0 +1,43 @@
+services:
+  guardrail:
+    build: .
+    privileged: true
+    sysctls:
+      net.core.somaxconn: 65535
+      net.ipv4.tcp_max_syn_backlog: 65535
+      net.ipv4.ip_local_port_range: "1024 65535"
+      net.ipv4.tcp_tw_reuse: 1
+    environment:
+      - PORT=8001
+      - WEB_CONCURRENCY=8
+      - ASCEND_NUM_DEVICES=8
+      - SENTINELSHIELD_INFERENCE_MAX_WORKERS=1
+      - SENTINELSHIELD_INFERENCE_CONCURRENCY=1
+      - SENTINELSHIELD_PROMPT_GUARD_BATCHING=1
+      - SENTINELSHIELD_PROMPT_GUARD_MAX_BATCH_SIZE=64
+      - SENTINELSHIELD_PROMPT_GUARD_MAX_WAIT_MS=100
+      - SENTINELSHIELD_RULE_EVAL_CACHE_SIZE=8192
+      - SENTINELSHIELD_PROMPT_GUARD_MODEL_PATH=/workspace/models/Llama-Prompt-Guard-2-86M
+      - SENTINELSHIELD_LLAMA_GUARD_MODEL_PATH=/workspace/models/Llama-Guard-4-12B
+      - TRANSFORMERS_OFFLINE=1
+      - HF_HUB_OFFLINE=1
+      - HF_DATASETS_OFFLINE=1
+    devices:
+      - /dev/davinci0
+      - /dev/davinci1
+      - /dev/davinci2
+      - /dev/davinci3
+      - /dev/davinci4
+      - /dev/davinci5
+      - /dev/davinci6
+      - /dev/davinci7
+      - /dev/davinci_manager
+      - /dev/hisi_hdc
+      - /dev/devmm_svm
+    volumes:
+      - /usr/local/Ascend/driver:/usr/local/Ascend/driver:ro
+      - /usr/local/sbin:/usr/local/sbin:ro
+      - ./models:/workspace/models:ro
+    ports:
+      # Exposed directly — Server 1's nginx proxies to this port
+      - "8002:8001"

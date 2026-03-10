@@ -4,6 +4,11 @@ services:
     # Ascend NPU driver requires privileged mode inside Docker.
     # (equivalent to `docker run --privileged`)
     privileged: true
+    sysctls:
+      net.core.somaxconn: 65535
+      net.ipv4.tcp_max_syn_backlog: 65535
+      net.ipv4.ip_local_port_range: "1024 65535"
+      net.ipv4.tcp_tw_reuse: 1
     environment:
       - PORT=8001
       # 8 workers, one per NPU card.
@@ -18,8 +23,8 @@ services:
       # Batching: collect up to 32 requests within a 50 ms window before
       # running a single NPU forward pass.  Adjust to taste.
       - SENTINELSHIELD_PROMPT_GUARD_BATCHING=1
-      - SENTINELSHIELD_PROMPT_GUARD_MAX_BATCH_SIZE=32
-      - SENTINELSHIELD_PROMPT_GUARD_MAX_WAIT_MS=50
+      - SENTINELSHIELD_PROMPT_GUARD_MAX_BATCH_SIZE=64
+      - SENTINELSHIELD_PROMPT_GUARD_MAX_WAIT_MS=100
       # Rule-engine cache – larger value = fewer regex re-evaluations.
       - SENTINELSHIELD_RULE_EVAL_CACHE_SIZE=8192
       # Model paths – point to the host-mounted directories inside the container.
@@ -67,6 +72,15 @@ services:
     image: nginx:1.27-alpine
     depends_on:
       - guardrail
+    environment:
+      # Set this on Server 1 to enable load-balancing to Server 2.
+      # Example: SERVER2_IP=172.16.21.52 docker compose up -d
+      - SERVER2_IP=${SERVER2_IP}
+    sysctls:
+      net.core.somaxconn: 65535
+      net.ipv4.tcp_max_syn_backlog: 65535
+      net.ipv4.ip_local_port_range: "1024 65535"
+      net.ipv4.tcp_tw_reuse: 1
     ports:
       - "8001:80"
     volumes:

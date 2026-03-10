@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 import yaml
 from pathlib import Path
@@ -16,6 +17,13 @@ from ..models import providers
 
 
 _CACHE_MISS = object()
+
+
+def _text_fingerprint(text: str) -> tuple[int, str]:
+    b = text.encode("utf-8", errors="ignore")
+    # Short, stable fingerprint for logs without leaking full content.
+    h = hashlib.blake2b(b, digest_size=8).hexdigest()
+    return len(text), h
 
 
 class Rule:
@@ -199,8 +207,9 @@ class Orchestrator:
             total_time = time.time() - start_time
             timings['total'] = total_time
             system_logger.info(f"Moderation timings: {timings}")
-            api_logger.info(f"{self.api_path} request: {text}")
-            api_logger.info(f"{self.api_path} response: {resp}")
+            n, h = _text_fingerprint(text)
+            api_logger.info(f"{self.api_path} request: len={n} hash={h}")
+            api_logger.debug(f"{self.api_path} response: {resp}")
             return resp
         
         # Handle long prompts by checking first and last chunks
@@ -223,8 +232,9 @@ class Orchestrator:
                 total_time = time.time() - start_time
                 timings['total'] = total_time
                 system_logger.info(f"Moderation timings: {timings}")
-                api_logger.info(f"{self.api_path} request: {text}")
-                api_logger.info(f"{self.api_path} response: {resp}")
+                n, h = _text_fingerprint(text)
+                api_logger.info(f"{self.api_path} request: len={n} hash={h}")
+                api_logger.debug(f"{self.api_path} response: {resp}")
                 return resp
         
         # If all pass
@@ -237,8 +247,9 @@ class Orchestrator:
         total_time = time.time() - start_time
         timings['total'] = total_time
         system_logger.info(f"Moderation timings: {timings}")
-        api_logger.info(f"{self.api_path} request: {text}")
-        api_logger.info(f"{self.api_path} response: {resp}")
+        n, h = _text_fingerprint(text)
+        api_logger.info(f"{self.api_path} request: len={n} hash={h}")
+        api_logger.debug(f"{self.api_path} response: {resp}")
         return resp
 
     async def _moderate_long_prompt(self, text: str, start_time: float) -> ModerationResponse:
@@ -246,18 +257,21 @@ class Orchestrator:
         collected_reasons = []
         timings = {}
         
-        # Check last 10,000 characters
+        # Check last and first 10,000 characters in parallel to reduce latency.
         last_chunk = text[-10000:]
-        last_resp = await self._moderate_chunk(last_chunk, "last_chunk")
+        first_chunk = text[:10000]
+        last_resp, first_resp = await asyncio.gather(
+            self._moderate_chunk(last_chunk, "last_chunk"),
+            self._moderate_chunk(first_chunk, "first_chunk"),
+        )
+
+        # Preserve early-exit semantics: return a blocking result immediately.
         if not last_resp.safe:
             return last_resp
-        collected_reasons.extend(last_resp.reasons)
-
-        # Check first 10,000 characters
-        first_chunk = text[:10000]
-        first_resp = await self._moderate_chunk(first_chunk, "first_chunk")
         if not first_resp.safe:
             return first_resp
+
+        collected_reasons.extend(last_resp.reasons)
         collected_reasons.extend(first_resp.reasons)
 
         # Both chunks safe -> return aggregated safe response
@@ -270,8 +284,9 @@ class Orchestrator:
             model_version="first-last-pipeline",
         )
         system_logger.info(f"Long prompt moderation timings: {timings}")
-        api_logger.info(f"{self.api_path} long prompt request: {text[:100]}...")
-        api_logger.info(f"{self.api_path} long prompt response: {resp}")
+        n, h = _text_fingerprint(text)
+        api_logger.info(f"{self.api_path} long prompt request: len={n} hash={h}")
+        api_logger.debug(f"{self.api_path} long prompt response: {resp}")
         return resp
 
     async def _moderate_chunk(self, chunk: str, chunk_type: str) -> ModerationResponse:
