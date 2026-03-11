@@ -9,6 +9,10 @@ from dataclasses import dataclass
 from ...core.logger import logger
 
 
+_TOKEN_LIMIT = 512
+_WINDOW_TOKENS = 256
+
+
 try:
     from transformers import pipeline
 except Exception as e:  # pragma: no cover - optional dependency
@@ -199,33 +203,79 @@ class LlamaPromptGuard2Provider:
         while len(self._cache) > self._cache_size:
             self._cache.popitem(last=False)
 
-    async def moderate(self, text: str) -> tuple[float, str | None]:
+    def _get_token_windows(self, text: str) -> tuple[str, str] | None:
+        if self.pipe is None or getattr(self.pipe, "tokenizer", None) is None:
+            return None
+
+        tokenizer = self.pipe.tokenizer
+        try:
+            # Get full token ids without truncation; disable special tokens so windows correspond to content.
+            encoded = tokenizer.encode(
+                text,
+                add_special_tokens=False,
+                truncation=False,
+            )
+        except TypeError:
+            # Older tokenizers may not support truncation kwarg; fall back to default behavior.
+            encoded = tokenizer.encode(text, add_special_tokens=False)
+
+        if len(encoded) <= _TOKEN_LIMIT:
+            return None
+
+        head_ids = encoded[:_WINDOW_TOKENS]
+        tail_ids = encoded[-_WINDOW_TOKENS:]
+
+        head_text = tokenizer.decode(head_ids, skip_special_tokens=True)
+        tail_text = tokenizer.decode(tail_ids, skip_special_tokens=True)
+        return head_text, tail_text
+
+    async def _infer(self, text: str) -> tuple[float, str | None]:
         score = 0.0
-        label = None
+        label: str | None = None
+
         if self.pipe is None:
             await asyncio.sleep(0)
             return score, label
-
-        # Check inference cache
-        key = self._cache_key(text)
-        cached = self._cache_get(key)
-        if cached is not _CACHE_MISS:
-            return cached  # type: ignore[return-value]
 
         if self._batcher is not None:
             res = await self._batcher.predict_one(text)
         else:
             async with self._sem:
                 loop = asyncio.get_running_loop()
-                res = await loop.run_in_executor(_INFERENCE_POOL, _pipe_call, self.pipe, text)
+                res = await loop.run_in_executor(
+                    _INFERENCE_POOL, _pipe_call, self.pipe, text
+                )
+
         if isinstance(res, list):
             res = res[0]
         if isinstance(res, dict):
-            label = res.get("label",  None)
+            label = res.get("label", None)
             score = float(res.get("score", 0.0))
-        if label == 'LABEL_0':
+        if label == "LABEL_0":
             score = 1 - score
-        result = (score, label)
+        return score, label
+
+    async def moderate(self, text: str) -> tuple[float, str | None]:
+        key = self._cache_key(text)
+        cached = self._cache_get(key)
+        if cached is not _CACHE_MISS:
+            return cached  # type: ignore[return-value]
+
+        windows = self._get_token_windows(text)
+        if windows is not None:
+            head_text, tail_text = windows
+            head_res, tail_res = await asyncio.gather(
+                self._infer(head_text),
+                self._infer(tail_text),
+            )
+            # Choose the window with the higher score; on tie prefer the tail (more recent context).
+            if head_res[0] > tail_res[0]:
+                result = head_res
+            else:
+                result = tail_res
+        else:
+            result = await self._infer(text)
+
         self._cache_put(key, result)
         return result
 

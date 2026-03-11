@@ -216,10 +216,6 @@ class Orchestrator:
             self._log_response(text, resp, start_time)
             return resp
 
-        # Handle long prompts by checking first and last chunks
-        if len(text) > 15000:
-            return await self._moderate_long_prompt(text, start_time)
-
         # 2. Model providers pipeline
         for name, provider in self.providers:
             score, label = await provider.moderate(text)
@@ -243,72 +239,6 @@ class Orchestrator:
         )
         self._log_response(text, resp, start_time)
         return resp
-
-    async def _moderate_long_prompt(self, text: str, start_time: float) -> ModerationResponse:
-        """Handle moderation for long prompts by checking first and last chunks."""
-        collected_reasons = []
-
-        # Check last and first 10,000 characters in parallel to reduce latency.
-        last_chunk = text[-10000:]
-        first_chunk = text[:10000]
-        last_resp, first_resp = await asyncio.gather(
-            self._moderate_chunk(last_chunk, "last_chunk"),
-            self._moderate_chunk(first_chunk, "first_chunk"),
-        )
-
-        # Preserve early-exit semantics: return a blocking result immediately.
-        if not last_resp.safe:
-            return last_resp
-        if not first_resp.safe:
-            return first_resp
-
-        collected_reasons.extend(last_resp.reasons)
-        collected_reasons.extend(first_resp.reasons)
-
-        # Both chunks safe -> return aggregated safe response
-        resp = ModerationResponse(
-            safe=True,
-            decision="ALLOW",
-            reasons=collected_reasons,
-            model_version="first-last-pipeline",
-        )
-        self._log_response(text, resp, start_time)
-        return resp
-
-    async def _moderate_chunk(self, chunk: str, chunk_type: str) -> ModerationResponse:
-        """Moderate a single chunk with rule engine first, then model checking."""
-        reasons: List[Reason] = []
-        
-        # 1. Rule engine check first
-        rule = self.rule_engine.evaluate(chunk)
-        if rule:
-            reasons.append(Reason(engine="rule", id=rule.id))
-            return ModerationResponse(
-                safe=rule.action == "ALLOW",
-                decision=rule.action,
-                reasons=reasons,
-                policy_version="v1",
-            )
-        
-        # 2. Model providers pipeline
-        for name, provider in self.providers:
-            score, label = await provider.moderate(chunk)
-            reasons.append(Reason(engine=name, category=label, score=score))
-            if score >= 0.5:
-                return ModerationResponse(
-                    safe=False,
-                    decision="BLOCK",
-                    reasons=reasons,
-                    model_version=name,
-                )
-        
-        # If all pass
-        return ModerationResponse(
-            safe=True,
-            decision="ALLOW",
-            reasons=reasons,
-            model_version="pipeline",
-        )
 
 
 def build_orchestrator(
