@@ -74,29 +74,5 @@ services:
       timeout: 3s
       retries: 60
       start_period: 30s
-    expose:
-      - "8001"
-
-  nginx:
-    image: nginx:1.27-alpine
-    depends_on:
-      guardrail:
-        condition: service_healthy
-    environment:
-      # Set SERVER2_IP on Server 1 to enable load-balancing to Server 2.
-      # Example: SERVER2_IP=172.16.21.52 docker compose up -d
-      # When SERVER2_IP is unset the backup entry resolves to the local guardrail
-      # container so nginx starts cleanly in single-server mode.
-      - SERVER2_UPSTREAM=${SERVER2_IP:-guardrail}:${SERVER2_PORT:-8002}
-      # Write the substituted template directly to nginx.conf (not conf.d/)
-      # so that top-level directives like worker_processes are valid.
-      - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
-    sysctls:
-      net.core.somaxconn: 65535
-      net.ipv4.tcp_max_syn_backlog: 65535
-      net.ipv4.ip_local_port_range: "1024 65535"
-      net.ipv4.tcp_tw_reuse: 1
     ports:
-      - "8001:80"
-    volumes:
-      - ./nginx/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
+      - "8001:8001"
