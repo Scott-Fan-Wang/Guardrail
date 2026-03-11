@@ -4,7 +4,7 @@ import asyncio
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from .routers import moderation, admin, prompt_guard, chat_guard
+from .routers import moderation, admin, prompt_guard, full_prompt_guard, chat_guard
 from ..models.providers import get_provider
 from ..core.logger import stop_logging, logger
 
@@ -12,6 +12,7 @@ app = FastAPI(title="SentinelShield")
 app.include_router(moderation.router)
 app.include_router(admin.router)
 app.include_router(prompt_guard.router)
+app.include_router(full_prompt_guard.router)
 app.include_router(chat_guard.router)
 
 

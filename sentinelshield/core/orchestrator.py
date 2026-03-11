@@ -145,7 +145,7 @@ class RuleEngine:
             for path, mtime in changed_files:
                 system_logger.warning(f"Failed to reload rules from {path} at mtime {mtime}; keeping previous rules.")
 
-    def evaluate(self, text: str) -> Rule | None:
+    def _ensure_rules_loaded(self) -> None:
         now = time.monotonic()
         if not self._rules_cache:
             self._load_rules()
@@ -154,6 +154,9 @@ class RuleEngine:
             self._last_check_time = now
             if self._rules_need_reload():
                 self._load_rules()
+
+    def evaluate(self, text: str) -> Rule | None:
+        self._ensure_rules_loaded()
 
         key = self._cache_key(text)
         cached = self._cache_get(key)
@@ -167,6 +170,15 @@ class RuleEngine:
                 return rule
         self._cache_put(key, None)
         return None
+
+    def scan(self, text: str) -> List[Rule]:
+        """Return all matching rules for the given text (no early exit)."""
+        self._ensure_rules_loaded()
+        matches: List[Rule] = []
+        for rule in self._rules_cache:
+            if rule.match(text):
+                matches.append(rule)
+        return matches
 
 
 class Orchestrator:
@@ -202,6 +214,39 @@ class Orchestrator:
     async def moderate(self, text: str) -> ModerationResponse:
         start_time = time.monotonic()
         reasons: List[Reason] = []
+
+        if self.api_path == "/v1/full-prompt-guard":
+            rules = self.rule_engine.scan(text)
+            for r in rules:
+                reasons.append(Reason(engine="rule", id=r.id))
+
+            blocked_by_rule = any(r.action != "ALLOW" for r in rules)
+
+            blocked_by_model = False
+            for name, provider in self.providers:
+                score, label = await provider.moderate(text)
+                reasons.append(Reason(engine=name, category=label, score=score))
+                if score >= 0.5:
+                    blocked_by_model = True
+
+            if blocked_by_rule or blocked_by_model:
+                resp = ModerationResponse(
+                    safe=False,
+                    decision="BLOCK",
+                    reasons=reasons,
+                    model_version="full-scan",
+                )
+                self._log_response(text, resp, start_time)
+                return resp
+
+            resp = ModerationResponse(
+                safe=True,
+                decision="ALLOW",
+                reasons=reasons,
+                model_version="full-scan",
+            )
+            self._log_response(text, resp, start_time)
+            return resp
 
         # 1. Rule engine check first
         rule = self.rule_engine.evaluate(text)
