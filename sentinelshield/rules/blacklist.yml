@@ -16,9 +16,9 @@
   when: content.match(r"\bignore previous instruction\b|\bignore system prompt\b")
   then: BLOCK
 
-- id: hate_speech
-  when: content.match(r"\bnazi\b|\bracist\b|\bsexist\b|\bhate speech\b|\bhomophobic\b|\bdiscriminat\w*\b")
-  then: BLOCK
+# - id: hate_speech
+#   when: content.match(r"\bnazi\b|\bracist\b|\bsexist\b|\bhate speech\b|\bhomophobic\b|\bdiscriminat\w*\b")
+#   then: BLOCK
 
 - id: instruction_override_variants
   when: content.match(r"\bforget previous instructions\b|\bdisregard previous instructions\b|\boverride previous instructions\b|\bignore all previous instructions\b")
